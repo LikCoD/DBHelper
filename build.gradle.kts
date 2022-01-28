@@ -54,7 +54,7 @@ subprojects {
             register<MavenPublication>("gpr") {
                 groupId = "liklibs.db"
                 artifactId = "db-helper"
-                version = "0.1"
+                version = "0.1.1"
 
                 from(components["java"])
             }
