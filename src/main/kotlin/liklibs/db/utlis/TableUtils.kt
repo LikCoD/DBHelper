@@ -13,7 +13,8 @@ import kotlin.reflect.full.findAnnotation
 @ExperimentalSerializationApi
 class TableUtils<T : Any>(
     credentialsFileName: String,
-    private val c: KClass<T>
+    private val c: KClass<T>,
+    private val serialization: KSerializer<List<T>>,
 ) : DB(c.findAnnotation<DBInfo>()?.dbName ?: throw IllegalArgumentException(), credentialsFileName) {
 
     private val tableName = c.findAnnotation<DBInfo>()?.tableName ?: throw IllegalArgumentException()
@@ -54,26 +55,25 @@ class TableUtils<T : Any>(
         if (isAvailable) deleteFromClass(objs)
     }
 
-    fun drop(){
-        execute("DROP TABLE $tableName")
-    }
-
-    private fun fromJSON(): List<T> {
-        val file = File("db_${c::simpleName}.json")
-
-        if (!file.exists()) return emptyList()
-
+    private fun fromJSON(postfix: String = ""): List<T> {
         return try {
-            Json.decodeFromStream(file.inputStream())
+            val file = File("db_${c.simpleName}$postfix.json")
+            if (!file.exists()) return emptyList()
+
+            Json.decodeFromStream(serialization, file.inputStream())
         } catch (ex: Exception) {
             emptyList()
         }
     }
 
-    private fun toJSON(obj: List<T>) {
+    private fun toJSON(obj: List<T>, postfix: String = "") {
         try {
-            Json.encodeToStream(obj, File("db_${c::simpleName}.json").outputStream())
-        } catch (_: Exception) {
+            val file = File("db_${c.simpleName}.json")
+            if (!file.exists()) file.createNewFile()
+
+            Json.encodeToStream(serialization, obj, File("db_${c.simpleName}$postfix.json").outputStream())
+        } catch (ex: Exception) {
+            ex.printStackTrace()
         }
     }
 }

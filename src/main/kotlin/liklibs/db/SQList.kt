@@ -10,15 +10,13 @@ import kotlin.reflect.full.findAnnotation
 class SQList<E : Any>(
     dbCredentialsFileName: String,
     kClass: KClass<E>,
+    serialization: KSerializer<List<E>>,
     private val list: MutableList<E> = mutableListOf()
 ) : MutableList<E> by list {
     val utils: TableUtils<E>
 
     init {
-        val dbName = kClass.findAnnotation<DBInfo>()?.dbName ?: throw IllegalArgumentException()
-        val tableName = kClass.findAnnotation<DBInfo>()?.tableName ?: throw IllegalArgumentException()
-
-        utils = TableUtils(dbCredentialsFileName, kClass)
+        utils = TableUtils(dbCredentialsFileName, kClass, serialization)
 
         list.addAll(utils.sync())
     }
@@ -78,4 +76,4 @@ class SQList<E : Any>(
 
 @ExperimentalSerializationApi
 inline fun <reified T : Any> sqList(dbCredentialsFileName: String) =
-    SQList(dbCredentialsFileName, T::class)
+    SQList(dbCredentialsFileName, T::class, serializer())
