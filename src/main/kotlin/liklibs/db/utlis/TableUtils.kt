@@ -17,10 +17,10 @@ class TableUtils<T : Any>(
     private val serialization: KSerializer<List<T>>,
 ) : DB(c.findAnnotation<DBInfo>()?.dbName ?: throw IllegalArgumentException(), credentialsFileName) {
 
-    private val tableName = c.findAnnotation<DBInfo>()?.tableName ?: throw IllegalArgumentException()
-
     fun sync(): List<T> {
         if (!isAvailable) return fromJSON()
+
+        deleteFromClass(fromJSON("_delete"))
 
         val list = fromJSON()
         if (list.isNotEmpty()) insertFromClass(list)
@@ -43,16 +43,18 @@ class TableUtils<T : Any>(
         if (isAvailable) insertFromClass(objs)
     }
 
-    fun delete(list: List<T>, obj: T){
+    fun delete(list: List<T>, obj: T) {
         toJSON(list)
 
         if (isAvailable) deleteFromClass(obj)
+        else toJSON(fromJSON("_delete") + obj)
     }
 
-    fun delete(list: List<T>, objs: Collection<T>){
+    fun delete(list: List<T>, objs: Collection<T>) {
         toJSON(list)
 
         if (isAvailable) deleteFromClass(objs)
+        else toJSON(fromJSON("_delete") + objs)
     }
 
     private fun fromJSON(postfix: String = ""): List<T> {

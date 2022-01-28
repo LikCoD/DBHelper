@@ -15,7 +15,8 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-abstract class DBUtils(val dbName: String, credentialsFileName: String? = null) {
+@ExperimentalSerializationApi
+abstract class DBUtils(private val dbName: String, credentialsFileName: String? = null) {
     private lateinit var connection: Connection
     private lateinit var statement: Statement
 

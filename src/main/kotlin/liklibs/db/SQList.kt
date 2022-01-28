@@ -46,7 +46,7 @@ class SQList<E : Any>(
     }
 
     override fun clear() {
-        utils.drop()
+        utils.delete(list, list)
 
         return list.clear()
     }

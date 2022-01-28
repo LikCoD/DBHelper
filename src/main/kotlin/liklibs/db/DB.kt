@@ -64,6 +64,8 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
     }
 
     fun <T : Any> deleteFromClass(objs: Collection<T>) {
+        if (objs.isEmpty()) return
+
         val tableName = objs.first()::class.findAnnotation<DBInfo>()?.tableName ?: return
 
         val ids = mutableListOf<Any>()
