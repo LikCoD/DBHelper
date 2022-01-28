@@ -1,11 +1,11 @@
 package liklibs.db.utlis
 
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
-import kotlinx.serialization.json.encodeToStream
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.json.*
 import liklibs.db.DB
 import liklibs.db.DBInfo
+
 import java.io.File
 import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation
@@ -31,13 +31,13 @@ class TableUtils<T : Any>(
         return syncedList
     }
 
-    fun insert(list: List<T>, obj: T){
+    fun insert(list: List<T>, obj: T) {
         toJSON(list)
 
         if (isAvailable) insertFromClass(obj)
     }
 
-    fun insert(list: List<T>, objs: Collection<T>){
+    fun insert(list: List<T>, objs: Collection<T>) {
         toJSON(list)
 
         if (isAvailable) insertFromClass(objs)

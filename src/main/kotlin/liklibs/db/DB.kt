@@ -1,5 +1,6 @@
 package liklibs.db
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import liklibs.db.utlis.DBUtils
 import java.sql.ResultSet
 import kotlin.reflect.KClass
@@ -8,6 +9,7 @@ import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.primaryConstructor
 
+@ExperimentalSerializationApi
 open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbName, credentialsFileName) {
 
     fun <T : Any> selectToClass(c: KClass<T>): List<T?> {
@@ -22,17 +24,24 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
     fun <T : Any> insertFromClass(c: T) {
         val table = c::class.findAnnotation<DBInfo>()?.tableName ?: return
 
-        val fields = c::class.declaredMemberProperties.associate {
+        var idProperty: KMutableProperty<*>? = null
+
+        val fields = c::class.declaredMemberProperties.mapNotNull {
             val fieldName = it.findAnnotation<DBField>()?.name ?: it.name
-            val value = it.getter.call(c)
+            if (fieldName == "_id" && it is KMutableProperty<*>) idProperty = it
 
-            fieldName to value
-        }
+            if (it.findAnnotation<NotInsertable>() != null) return@mapNotNull null
 
-        insert(table, fields)
+            fieldName to it.getter.call(c)
+        }.toMap()
+
+        val id = insert(table, fields)
+        idProperty?.setter?.call(c, id)
     }
 
     fun <T : Any> insertFromClass(objs: Collection<T>) {
+        if (objs.isEmpty()) return
+
         val table = objs.first()::class.findAnnotation<DBInfo>()?.tableName ?: return
 
         val keys = mutableListOf<String>()
@@ -40,17 +49,25 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
             mutableListOf<Any?>()
         }
 
+        var idProperty: KMutableProperty<*>? = null
+
         objs.first()::class.declaredMemberProperties.forEach {
+            val fieldName = it.findAnnotation<DBField>()?.name ?: it.name
+            if (fieldName == "_id" && it is KMutableProperty<*>) idProperty = it
+
             if (it.findAnnotation<NotInsertable>() != null) return@forEach
 
-            keys.add(it.findAnnotation<DBField>()?.name ?: it.name)
+            keys.add(fieldName)
 
             objs.forEachIndexed { i, obj ->
                 values[i].add(it.getter.call(obj))
             }
         }
 
-        insert(table, keys, *values.toTypedArray())
+        val ids = insert(table, keys, *values.toTypedArray())
+        objs.forEachIndexed { i, it ->
+            idProperty?.setter?.call(it, ids[i])
+        }
     }
 
     fun <T : Any> deleteFromClass(c: T) {

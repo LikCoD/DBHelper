@@ -1,10 +1,10 @@
 package liklibs.db
 
 import kotlinx.serialization.ExperimentalSerializationApi
-import liklibs.db.DBInfo
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.serializer
 import liklibs.db.utlis.TableUtils
 import kotlin.reflect.KClass
-import kotlin.reflect.full.findAnnotation
 
 @ExperimentalSerializationApi
 class SQList<E : Any>(

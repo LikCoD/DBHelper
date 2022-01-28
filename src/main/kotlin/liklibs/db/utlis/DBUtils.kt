@@ -1,5 +1,6 @@
 package liklibs.db.utlis
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import liklibs.db.DBCredentials
@@ -44,18 +45,36 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
     internal open fun <T> parseList(list: Iterable<T>, parseValue: Boolean = true) =
         list.joinToString(prefix = "(", postfix = ")") { if (parseValue) parseValue(it) else it.toString() }
 
-    fun <T> insert(table: String, map: Map<String, T>, onConflict: String = "NOTHING") {
+    fun <T> insert(table: String, map: Map<String, T>, onConflict: String = "NOTHING"): Int? {
         val fieldsQuery = parseList(map.keys, false)
         val valuesQuery = parseList(map.values)
 
-        execute("INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT DO $onConflict")
+        val res =
+            executeQuery("INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT DO $onConflict RETURNING _id")
+
+        if (res == null || !res.next()) return null
+
+        return res.getInt("_id")
     }
 
-    fun <T> insert(table: String, keys: List<String>, vararg valuesList: List<T>, onConflict: String = "NOTHING") {
+    fun <T> insert(
+        table: String,
+        keys: List<String>,
+        vararg valuesList: List<T>,
+        onConflict: String = "NOTHING",
+    ): List<Int?> {
         val fieldsQuery = parseList(keys, false)
         val valuesQuery = valuesList.joinToString(transform = ::parseList)
 
-        execute("INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT DO $onConflict")
+        val res =
+            executeQuery("INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT DO $onConflict RETURNING _id")
+
+        val ids = mutableListOf<Int?>()
+        while (res?.next() ?: return emptyList()) {
+            ids.add(res.getInt("_id"))
+        }
+
+        return ids
     }
 
     fun select(table: String, fields: String = "*", filter: String? = null) =
