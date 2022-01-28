@@ -37,7 +37,7 @@ application {
     mainClass.set("MainKt")
 }
 
-subprojects {
+publishing {
     apply(plugin = "maven-publish")
     configure<PublishingExtension> {
         repositories {
