@@ -21,6 +21,7 @@ class TableUtils<T : Any>(
         if (!isAvailable) return fromJSON()
 
         deleteFromClass(fromJSON("_delete"))
+        toJSON(emptyList(), "_delete")
 
         val list = fromJSON()
         if (list.isNotEmpty()) insertFromClass(list)
