@@ -54,7 +54,7 @@ publishing {
             register<MavenPublication>("gpr") {
                 groupId = "liklibs.db"
                 artifactId = "db-helper"
-                version = "0.1.5"
+                version = "0.1.6"
 
                 from(components["java"])
             }

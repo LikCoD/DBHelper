@@ -1,15 +1,15 @@
 [![](https://jitpack.io/v/LikCoD/DBHelper.svg)](https://jitpack.io/#LikCoD/DBHelper)
 
-
 # DBHelper
 
 ****
 How to use
 
 build.gradle.kts
+
 ```kotlin
 repositories {
-	maven { url = uri("https://jitpack.io") }
+    maven { url = uri("https://jitpack.io") }
 }
 
 dependencies {
@@ -18,20 +18,30 @@ dependencies {
 ```
 
 build.gradle
+
 ```groovy
 repositories {
-	maven { url 'https://jitpack.io' }
+    maven { url 'https://jitpack.io' }
 }
 
 dependencies {
-    implementation 'com.github.LikCoD:DBHelper:0.1.3'
+    implementation 'com.github.LikCoD:DBHelper:0.1.6'
 }
 ```
+
 ****
 
 This library provide some tools that help us to communicate with postgreSQL
 
 Also, there is a sqList that sync with db or if user doesn't have internet connection save files locally
+
+To use date, time, timestamp - use this classes, because standard libs (`java.sql`) not serializable
+
+```kotlin
+liklibs.db.Date() // For dates
+liklibs.db.Time() // For times
+liklibs.db.Timestamp() // For timestamps
+```
 
 Examples:
 ****
@@ -55,10 +65,11 @@ data class Table(
     @DBField("_key") val key: String,
 )
 ```
+
 In this case there is data class with annotations:
 
-- `@Serializable` - annotation that provide access to save/read JSON files 
-add this lines to build.gradle.kts 
+- `@Serializable` - annotation that provide access to save/read JSON files
+  add this lines to build.gradle.kts
 
 ```kotlin
 plugins {
@@ -95,7 +106,7 @@ There we use `sqList`
 - When user doesn't have internet access it save files locally
 - It loads data from file when you create it
 
-Also, you need to create file db_credentials.json (or another name) with following structure 
+Also, you need to create file db_credentials.json (or another name) with following structure
 
 ```json
 {
@@ -119,7 +130,8 @@ list.add(Table(value = "some_value", key = "some_key"))
 list.removeAt(1)
 ```
 
-- The second element will be deleted if  internet connection doesn't present it will be deleted when user connect to internet
+- The second element will be deleted if internet connection doesn't present it will be deleted when user connect to
+  internet
 
 ****
 
@@ -128,6 +140,7 @@ list.removeAt(1)
 ****
 
 If you have specific select request you can use `@Select` annotation
+
 ```kotlin
 @DBInfo(
     dbName = "dbname",
@@ -140,6 +153,7 @@ data class Table(/*...*/)
 ****
 
 If you want to execute query you can use functions builtin sqList
+
 ```kotlin
 val executeResult1 = list.utils.executeQuery("") //Returns ResultSet?
 val executeResult2 = list.utils.execute("") //Returns Boolean
