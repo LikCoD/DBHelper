@@ -6,17 +6,32 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 
 @Serializable
-data class Date(var day: Int, var month: Int, var year: Int){
+data class Date(
+    var day: Int = -1,
+    var month: Int = -1,
+    var year: Int = -1,
+) {
     override fun toString() = "$year-$month-$day"
 }
 
 @Serializable
-data class Time(var hour: Int, var minute: Int, var second: Int){
+data class Time(
+    var hour: Int = -1,
+    var minute: Int = -1,
+    var second: Int = -1,
+) {
     override fun toString() = "$hour:$minute:$second"
 }
 
 @Serializable
-data class Timestamp(var day: Int, var month: Int, var year: Int, var hour: Int, var minute: Int, var second: Int){
+data class Timestamp(
+    var day: Int = -1,
+    var month: Int = -1,
+    var year: Int = -1,
+    var hour: Int = -1,
+    var minute: Int = -1,
+    var second: Int = -1,
+) {
     override fun toString() = "$year-$month-$day $hour:$minute:$second"
 }
 
