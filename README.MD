@@ -3,6 +3,32 @@
 
 # DBHelper
 
+****
+How to use
+
+build.gradle.kts
+```kotlin
+repositories {
+	maven { url = uri("https://jitpack.io") }
+}
+
+dependencies {
+    implementation("com.github.LikCoD:DBHelper:0.1.3")
+}
+```
+
+build.gradle
+```groovy
+repositories {
+	maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    implementation 'com.github.LikCoD:DBHelper:0.1.3'
+}
+```
+****
+
 This library provide some tools that help us to communicate with postgreSQL
 
 Also, there is a sqList that sync with db or if user doesn't have internet connection save files locally
