@@ -101,7 +101,8 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
         else -> value.toString().replace(Regex("['`]"), "")
     }
 
-    internal open fun <T: Any> parseResult(value: T): Any = when (value) {
+    internal open fun <T> parseResult(value: T): Any? = when (value) {
+        null -> value
         is java.sql.Timestamp -> value.toSQL()
         is java.sql.Date -> value.toSQL()
         is java.sql.Time -> value.toSQL()
