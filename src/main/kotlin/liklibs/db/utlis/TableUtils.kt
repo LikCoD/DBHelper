@@ -61,6 +61,23 @@ class TableUtils<T : Any>(
         else toJSON(fromJSON("_delete") + objs)
     }
 
+    fun update(list: List<T>, obj: T, oldObj: T){
+        val id = oldObj::class.declaredMemberProperties
+            .find { (it.findAnnotation<DBField>()?.name ?: it.name) == "_id" }
+            ?.getter?.call(oldObj)?.toString()?.toIntOrNull() ?: return
+
+        val idProperty = obj::class.declaredMemberProperties
+            .find { (it.findAnnotation<DBField>()?.name ?: it.name) == "_id"}
+
+        if (idProperty !is KMutableProperty<*>) return
+        idProperty.setter.call(obj, id)
+
+        toJSON(list)
+
+        if (isAvailable) updateFromClass(obj)
+        else toJSON(fromJSON("_update") + obj)
+    }
+
     private fun fromJSON(postfix: String = ""): List<T> {
         return try {
             val file = File("db_${c.simpleName}$postfix.json")

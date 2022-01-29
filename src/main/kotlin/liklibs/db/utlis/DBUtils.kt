@@ -45,12 +45,13 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
     internal open fun <T> parseList(list: Iterable<T>, parseValue: Boolean = true) =
         list.joinToString(prefix = "(", postfix = ")") { if (parseValue) parseValue(it) else it.toString() }
 
-    fun <T> insert(table: String, map: Map<String, T>, onConflict: String = "NOTHING"): Int? {
+    fun <T> insert(table: String, map: Map<String, T>): Int? {
         val fieldsQuery = parseList(map.keys, false)
         val valuesQuery = parseList(map.values)
+        val updateQuery = map.keys.joinToString { "$it = EXCLUDED.$it" }
 
         val res =
-            executeQuery("INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT DO $onConflict RETURNING _id")
+            executeQuery("INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT (_id) DO UPDATE SET $updateQuery RETURNING _id")
 
         if (res == null || !res.next()) return null
 
@@ -61,13 +62,13 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
         table: String,
         keys: List<String>,
         vararg valuesList: List<T>,
-        onConflict: String = "NOTHING",
     ): List<Int?> {
         val fieldsQuery = parseList(keys, false)
         val valuesQuery = valuesList.joinToString(transform = ::parseList)
+        val updateQuery = keys.joinToString { "$it = EXCLUDED.$it" }
 
         val res =
-            executeQuery("INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT DO $onConflict RETURNING _id")
+            executeQuery("INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT (_id) DO UPDATE SET $updateQuery RETURNING _id")
 
         val ids = mutableListOf<Int?>()
         while (res?.next() ?: return emptyList()) {
