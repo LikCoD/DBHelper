@@ -4,6 +4,9 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import liklibs.db.DBCredentials
+import liklibs.db.Date
+import liklibs.db.Time
+import liklibs.db.Timestamp
 import org.intellij.lang.annotations.Language
 import org.postgresql.util.PSQLException
 import java.io.File
@@ -95,9 +98,9 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
     internal open fun <T> parseValue(value: T): String = when (value) {
         is String -> "'${value.replace(Regex("['`]"), "")}'"
         is Iterable<*> -> value.joinToString(prefix = "{", postfix = "}") { parseValue(it) }
-        is LocalDateTime -> "TIMESTAMP '${value.format(DateTimeFormatter.ISO_DATE_TIME)}'"
-        is LocalDate -> "DATE '${value.format(DateTimeFormatter.ISO_DATE)}'"
-        is LocalTime -> "TIME '${value.format(DateTimeFormatter.ISO_TIME)}'"
+        is Timestamp -> "TIMESTAMP '$value'"
+        is Date -> "DATE '$value'"
+        is Time -> "TIME '$value'"
         else -> value.toString().replace(Regex("['`]"), "")
     }
 
