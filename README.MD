@@ -1,3 +1,6 @@
+[![](https://jitpack.io/v/LikCoD/DBHelper.svg)](https://jitpack.io/#LikCoD/DBHelper)
+
+
 # DBHelper
 
 This library provide some tools that help us to communicate with postgreSQL
