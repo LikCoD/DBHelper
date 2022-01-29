@@ -77,6 +77,14 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
         return ids
     }
 
+    fun <T> update(table: String, map: Map<String, T>, id: Int) {
+        val fieldsQuery = map.entries.joinToString {
+            "SET ${it.key} = ${parseValue(it.value)}"
+        }
+
+        println("UPDATE $table $fieldsQuery WHERE _id = $id")
+    }
+
     fun select(table: String, fields: String = "*", filter: String? = null) =
         executeQuery("SELECT $fields FROM $table ${if (filter != null) "WHERE $filter" else ""}")
 

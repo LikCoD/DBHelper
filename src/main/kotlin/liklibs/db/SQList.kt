@@ -62,7 +62,11 @@ class SQList<E : Any>(
         }
 
     override fun set(index: Int, element: E): E {
-        return list.set(index, element)
+        val oldElement = list[index]
+
+        return list.set(index, element).also {
+            utils.update(list, element, oldElement)
+        }
     }
 }
 

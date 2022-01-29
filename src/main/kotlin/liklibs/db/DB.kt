@@ -39,7 +39,7 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
         idProperty?.setter?.call(c, id)
     }
 
-    fun <T : Any> insertFromClass(objs: Collection<T>) {
+    fun <T : Any> insertFromClass(objs: Collection<T>, parseId: Boolean = false) {
         if (objs.isEmpty()) return
 
         val table = objs.first()::class.findAnnotation<DBInfo>()?.tableName ?: return
@@ -55,7 +55,7 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
             val fieldName = it.findAnnotation<DBField>()?.name ?: it.name
             if (fieldName == "_id" && it is KMutableProperty<*>) idProperty = it
 
-            if (it.findAnnotation<NotInsertable>() != null) return@forEach
+            if (it.findAnnotation<NotInsertable>() != null && !parseId) return@forEach
 
             keys.add(fieldName)
 
@@ -63,6 +63,7 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
                 values[i].add(it.getter.call(obj))
             }
         }
+
 
         val ids = insert(table, keys, *values.toTypedArray())
         objs.forEachIndexed { i, it ->
@@ -96,6 +97,24 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
         }
 
         delete(tableName, "_id IN ${ids.joinToString(prefix = "(", postfix = ")")}")
+    }
+
+    fun <T : Any> updateFromClass(c: T) {
+        val tableName = c::class.findAnnotation<DBInfo>()?.tableName ?: return
+
+        val id: Int? = null
+
+        val fields = c::class.declaredMemberProperties.mapNotNull {
+            val fieldName = it.findAnnotation<DBField>()?.name ?: it.name
+            if (fieldName == "_id") it.getter.call(c)
+
+            if (it.findAnnotation<NotInsertable>() != null) return@mapNotNull null
+
+            fieldName to it.getter.call(c)
+        }.toMap()
+
+        id ?: return
+        update(tableName, fields, id)
     }
 
     private fun <T : Any> ResultSet.parseToArray(c: KClass<T>): List<T?> {

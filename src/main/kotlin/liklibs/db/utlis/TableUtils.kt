@@ -4,10 +4,13 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.*
 import liklibs.db.DB
+import liklibs.db.DBField
 import liklibs.db.DBInfo
 
 import java.io.File
 import kotlin.reflect.KClass
+import kotlin.reflect.KMutableProperty
+import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.findAnnotation
 
 @ExperimentalSerializationApi
@@ -24,7 +27,7 @@ class TableUtils<T : Any>(
         toJSON(emptyList(), "_delete")
 
         val list = fromJSON()
-        if (list.isNotEmpty()) insertFromClass(list)
+        if (list.isNotEmpty()) insertFromClass(list, true)
 
         val syncedList = selectToClass(c).filterNotNull()
         toJSON(syncedList)
