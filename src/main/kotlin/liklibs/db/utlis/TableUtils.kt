@@ -75,7 +75,6 @@ class TableUtils<T : Any>(
         toJSON(list)
 
         if (isAvailable) updateFromClass(obj)
-        else toJSON(fromJSON("_update") + obj)
     }
 
     private fun fromJSON(postfix: String = ""): List<T> {
@@ -91,10 +90,10 @@ class TableUtils<T : Any>(
 
     private fun toJSON(obj: List<T>, postfix: String = "") {
         try {
-            val file = File("db_${c.simpleName}.json")
+            val file = File("db_${c.simpleName}$postfix.json")
             if (!file.exists()) file.createNewFile()
 
-            Json.encodeToStream(serialization, obj, File("db_${c.simpleName}$postfix.json").outputStream())
+            Json.encodeToStream(serialization, obj, file.outputStream())
         } catch (ex: Exception) {
             ex.printStackTrace()
         }
