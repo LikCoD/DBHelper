@@ -3,10 +3,7 @@ package liklibs.db.utlis
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
-import liklibs.db.DBCredentials
-import liklibs.db.Date
-import liklibs.db.Time
-import liklibs.db.Timestamp
+import liklibs.db.*
 import org.intellij.lang.annotations.Language
 import org.postgresql.util.PSQLException
 import java.io.File
@@ -102,6 +99,13 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
         is Date -> "DATE '$value'"
         is Time -> "TIME '$value'"
         else -> value.toString().replace(Regex("['`]"), "")
+    }
+
+    internal open fun <T: Any> parseResult(value: T): Any = when (value) {
+        is java.sql.Timestamp -> value.toSQL()
+        is java.sql.Date -> value.toSQL()
+        is java.sql.Time -> value.toSQL()
+        else -> value
     }
 
     init {
