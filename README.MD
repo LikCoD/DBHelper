@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.LikCoD:DBHelper:0.1.9")
+    implementation("com.github.LikCoD:DBHelper:v0.2")
 }
 ```
 

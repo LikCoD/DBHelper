@@ -59,13 +59,14 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
         var idProperty: KMutableProperty<*>? = null
 
         objs.first()::class.declaredMemberProperties.forEach {
-            val fieldName = it.findAnnotation<DBField>()?.name ?: it.name
+            var fieldName = it.findAnnotation<DBField>()?.name ?: it.name
             if (it.findAnnotation<Primary>() != null && it is KMutableProperty<*>) {
                 idProperty = it
-                return@forEach
+                if (!parseId) return@forEach
+                fieldName = "_id"
             }
 
-            if (it.findAnnotation<NotInsertable>() != null && !parseId) return@forEach
+            if (it.findAnnotation<NotInsertable>() != null) return@forEach
 
             keys.add(fieldName)
 
