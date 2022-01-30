@@ -111,7 +111,10 @@ class TableUtils<T : Any>(
 
     private fun toJSON(obj: List<T>, postfix: String = "") {
         try {
-            val file = File("$offlineStoragePath${c.simpleName}$postfix.json")
+            val path = "$offlineStoragePath${c.simpleName}$postfix.json"
+            File(path.substringBeforeLast("\\")).mkdirs()
+
+            val file = File(path)
             if (!file.exists()) file.createNewFile()
 
             Json.encodeToStream(serialization, obj, file.outputStream())
