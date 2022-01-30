@@ -18,10 +18,9 @@ class TableUtils<T : Any>(
     credentialsFileName: String,
     private val c: KClass<T>,
     private val serialization: KSerializer<List<T>>,
-) : DB(
-    c.java.declaringClass.kotlin.findAnnotation<DBInfo>()?.dbName ?: throw IllegalArgumentException(),
-    credentialsFileName
-) {
+    private val dbInfo: DBInfo = c.java.declaringClass.kotlin.findAnnotation() ?: throw IllegalArgumentException(),
+    var offlineStoragePath: String = dbInfo.offlineStoragePath
+) : DB(dbInfo.dbName, credentialsFileName) {
 
     private fun getLocalId(list: List<T>) = list.maxOf {
         it::class.declaredMemberProperties
@@ -101,7 +100,7 @@ class TableUtils<T : Any>(
 
     private fun fromJSON(postfix: String = ""): List<T> {
         return try {
-            val file = File("db_${c.simpleName}$postfix.json")
+            val file = File("$offlineStoragePath${c.simpleName}$postfix.json")
             if (!file.exists()) return emptyList()
 
             Json.decodeFromStream(serialization, file.inputStream())
@@ -112,7 +111,7 @@ class TableUtils<T : Any>(
 
     private fun toJSON(obj: List<T>, postfix: String = "") {
         try {
-            val file = File("db_${c.simpleName}$postfix.json")
+            val file = File("$offlineStoragePath${c.simpleName}$postfix.json")
             if (!file.exists()) file.createNewFile()
 
             Json.encodeToStream(serialization, obj, file.outputStream())

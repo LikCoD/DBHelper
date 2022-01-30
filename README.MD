@@ -1,4 +1,4 @@
-[//]: # ([![]&#40;https://jitpack.io/v/LikCoD/DBHelper.svg&#41;]&#40;https://jitpack.io/#LikCoD/DBHelper&#41;)
+<a href="https://jitpack.io/#LikCoD/DBHelper"> <img src="https://jitpack.io/v/LikCoD/DBHelper.svg" alt="alt"> </a>
 
 # DBHelper
 
@@ -155,12 +155,36 @@ list.removeAt(1)
 If you have specific select request you can use `@Select` annotation
 
 ```kotlin
-@DBInfo(
-    dbName = "dbname",
+@DBTable(
     tableName = "tablename",
-    selectQuery = "SELECT _id, key FROM tablename"
+    selectQuery = "SELECT _id, key_ FROM tablename"
 )
-data class Table(/*...*/)
+data class Table(
+  @DBField("key_") val key: String,
+  @Primary val id: Int
+)
+```
+
+****
+
+You can change offline storage path just add `offlineStoragePath` property
+
+```kotlin
+@DBInfo(
+  dbName = "dbName",
+  offlineStoragePath = "db\\" 
+  // to add prefix to db you can use
+  // offlineStoragePath = "db\\prefix" 
+)
+sealed class DB {
+    /*...*/
+}
+```
+
+To change it in runtime you can use
+
+```kotlin
+list.utils.offlineStoragePath = "..."
 ```
 
 ****

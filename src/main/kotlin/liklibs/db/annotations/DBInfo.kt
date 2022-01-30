@@ -4,5 +4,6 @@ package liklibs.db.annotations
 @Target(AnnotationTarget.CLASS)
 @MustBeDocumented
 annotation class DBInfo(
-    val dbName: String
+    val dbName: String,
+    val offlineStoragePath: String = "db\\"
 )
