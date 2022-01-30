@@ -8,7 +8,6 @@ import kotlin.reflect.KClass
 
 @ExperimentalSerializationApi
 class SQList<E : Any>(
-    dbCredentialsFileName: String,
     kClass: KClass<E>,
     serialization: KSerializer<List<E>>,
     private val list: MutableList<E> = mutableListOf(),
@@ -16,7 +15,7 @@ class SQList<E : Any>(
     val utils: TableUtils<E>
 
     init {
-        utils = TableUtils(dbCredentialsFileName, kClass, serialization)
+        utils = TableUtils(kClass, serialization)
 
         list.addAll(utils.sync())
     }
@@ -71,5 +70,5 @@ class SQList<E : Any>(
 }
 
 @ExperimentalSerializationApi
-inline fun <reified T : Any> sqList(dbCredentialsFileName: String) =
-    SQList(dbCredentialsFileName, T::class, serializer())
+inline fun <reified T : Any> sqList() =
+    SQList(T::class, serializer())

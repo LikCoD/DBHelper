@@ -15,12 +15,11 @@ import kotlin.reflect.full.findAnnotation
 
 @ExperimentalSerializationApi
 class TableUtils<T : Any>(
-    credentialsFileName: String,
     private val c: KClass<T>,
     private val serialization: KSerializer<List<T>>,
     private val dbInfo: DBInfo = c.java.declaringClass.kotlin.findAnnotation() ?: throw IllegalArgumentException(),
     var offlineStoragePath: String = dbInfo.offlineStoragePath
-) : DB(dbInfo.dbName, credentialsFileName) {
+) : DB(dbInfo.dbName, dbInfo.credentialsFilePath) {
 
     private fun getLocalId(list: List<T>) = list.maxOf {
         it::class.declaredMemberProperties

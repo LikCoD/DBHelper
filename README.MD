@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.LikCoD:DBHelper:0.1.8")
+    implementation("com.github.LikCoD:DBHelper:0.1.9")
 }
 ```
 
@@ -55,7 +55,7 @@ import liklibs.db.Time
 import liklibs.db.Timestamp
 import liklibs.db.annotations.*
 
-@DBInfo("dbName")
+@DBInfo("dbName", "db_credentials.json")
 sealed class DB{
 
   @DBTable("primary")
@@ -78,7 +78,7 @@ sealed class DB{
 }
 ```
 
-In this case there is data class with annotations:
+In this case there is sealed class with data classes inside:
 
 - `@Serializable` - annotation that provide access to save/read JSON files
   add this lines to build.gradle.kts
@@ -93,7 +93,14 @@ dependencies {
 }
 ```
 
-- `@DBInfo`
+- `@DBInfo` - db name and credentials file, create it with following structure
+```json
+{
+  "host": "",
+  "user": "",
+  "password": ""
+}
+```
 - `@NotInsertable` - ignore this property
 - `@DBField` - use this annotation when name of property and field are different
 - `@Primary` - use for id field
@@ -108,7 +115,7 @@ import liklibs.db.sqList
 
 @ExperimentalSerializationApi
 fun main() {
-    val list = sqList<Table>("db_credentials.json")
+    val list = sqList<Table>()
     println(list.toList())
 }
 ```
@@ -119,14 +126,6 @@ There we use `sqList`
 - When user doesn't have internet access it save files locally
 - It loads data from file when you create it
 
-Also, you need to create file db_credentials.json (or another name) with following structure
-
-```json
-{
-  "host": "hostname",
-  "user": "username",
-  "password": "user password"
-}
 ```
 
 ****
