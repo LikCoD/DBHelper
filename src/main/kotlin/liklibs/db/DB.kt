@@ -1,6 +1,10 @@
 package liklibs.db
 
 import kotlinx.serialization.ExperimentalSerializationApi
+import liklibs.db.annotations.DBField
+import liklibs.db.annotations.DBTable
+import liklibs.db.annotations.NotInsertable
+import liklibs.db.annotations.Primary
 import liklibs.db.utlis.DBUtils
 import java.sql.ResultSet
 import kotlin.reflect.KClass
@@ -13,8 +17,8 @@ import kotlin.reflect.full.primaryConstructor
 open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbName, credentialsFileName) {
 
     fun <T : Any> selectToClass(c: KClass<T>): List<T?> {
-        var query = c.findAnnotation<DBInfo>()?.selectQuery
-        if (query == null || query == "") query = "SELECT * FROM ${c.findAnnotation<DBInfo>()?.tableName}"
+        var query = c.findAnnotation<DBTable>()?.selectQuery
+        if (query == null || query == "") query = "SELECT * FROM ${c.findAnnotation<DBTable>()?.tableName}"
 
         val result = executeQuery(query) ?: return emptyList()
 
@@ -22,15 +26,18 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
     }
 
     fun <T : Any> insertFromClass(c: T) {
-        val table = c::class.findAnnotation<DBInfo>()?.tableName ?: return
+        val table = c::class.findAnnotation<DBTable>()?.tableName ?: return
 
         var idProperty: KMutableProperty<*>? = null
 
         val fields = c::class.declaredMemberProperties.mapNotNull {
-            val fieldName = it.findAnnotation<DBField>()?.name ?: it.name
-            if (fieldName == "_id" && it is KMutableProperty<*>) idProperty = it
-
+            if (it.findAnnotation<Primary>() != null && it is KMutableProperty<*>) {
+                idProperty = it
+                return@mapNotNull null
+            }
             if (it.findAnnotation<NotInsertable>() != null) return@mapNotNull null
+
+            val fieldName = it.findAnnotation<DBField>()?.name ?: it.name
 
             fieldName to it.getter.call(c)
         }.toMap()
@@ -42,7 +49,7 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
     fun <T : Any> insertFromClass(objs: Collection<T>, parseId: Boolean = false) {
         if (objs.isEmpty()) return
 
-        val table = objs.first()::class.findAnnotation<DBInfo>()?.tableName ?: return
+        val table = objs.first()::class.findAnnotation<DBTable>()?.tableName ?: return
 
         val keys = mutableListOf<String>()
         val values = MutableList(objs.size) {
@@ -53,7 +60,10 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
 
         objs.first()::class.declaredMemberProperties.forEach {
             val fieldName = it.findAnnotation<DBField>()?.name ?: it.name
-            if (fieldName == "_id" && it is KMutableProperty<*>) idProperty = it
+            if (it.findAnnotation<Primary>() != null && it is KMutableProperty<*>) {
+                idProperty = it
+                return@forEach
+            }
 
             if (it.findAnnotation<NotInsertable>() != null && !parseId) return@forEach
 
@@ -72,10 +82,10 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
     }
 
     fun <T : Any> deleteFromClass(c: T) {
-        val tableName = c::class.findAnnotation<DBInfo>()?.tableName ?: return
+        val tableName = c::class.findAnnotation<DBTable>()?.tableName ?: return
 
         val id = c::class.declaredMemberProperties
-            .find { (it.findAnnotation<DBField>()?.name ?: it.name) == "_id" }
+            .find { it.findAnnotation<Primary>() != null }
             ?.getter?.call(c) ?: return
 
         delete(tableName, "_id = ${parseValue(id)}")
@@ -84,13 +94,13 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
     fun <T : Any> deleteFromClass(objs: Collection<T>) {
         if (objs.isEmpty()) return
 
-        val tableName = objs.first()::class.findAnnotation<DBInfo>()?.tableName ?: return
+        val tableName = objs.first()::class.findAnnotation<DBTable>()?.tableName ?: return
 
         val ids = mutableListOf<Any>()
 
         objs.forEach { c ->
             val id = c::class.declaredMemberProperties
-                .find { (it.findAnnotation<DBField>()?.name ?: it.name) == "_id" }
+                .find { it.findAnnotation<Primary>() != null }
                 ?.getter?.call(c) ?: return@forEach
 
             ids.add(id)
@@ -100,24 +110,26 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
     }
 
     fun <T : Any> updateFromClass(c: T) {
-        val tableName = c::class.findAnnotation<DBInfo>()?.tableName ?: return
+        val tableName = c::class.findAnnotation<DBTable>()?.tableName ?: return
 
         val id: Int? = null
 
         val fields = c::class.declaredMemberProperties.mapNotNull {
-            val fieldName = it.findAnnotation<DBField>()?.name ?: it.name
-            if (fieldName == "_id") it.getter.call(c)
+            if (it.findAnnotation<Primary>() != null) {
+                it.getter.call(c)
+                return@mapNotNull null
+            }
 
             if (it.findAnnotation<NotInsertable>() != null) return@mapNotNull null
 
-            fieldName to it.getter.call(c)
+            (it.findAnnotation<DBField>()?.name ?: it.name) to it.getter.call(c)
         }.toMap()
 
         id ?: return
         update(tableName, fields, id)
     }
 
-    private fun <T : Any> ResultSet.parseToArray(c: KClass<T>): List<T?> {
+    fun <T : Any> ResultSet.parseToArray(c: KClass<T>): List<T?> {
         val list = mutableListOf<T?>()
 
         while (next()) list.add(parseToClass(c))
@@ -125,7 +137,7 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
         return list
     }
 
-    private fun <T : Any> ResultSet.parseToClass(c: KClass<T>): T? {
+    fun <T : Any> ResultSet.parseToClass(c: KClass<T>): T? {
         try {
             val constructor = c.primaryConstructor ?: return null
 
@@ -155,7 +167,7 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
 
     inline fun <reified T : Any> selectToClass(): List<T?> = selectToClass(T::class)
 
-    private inline fun <reified T : Any> ResultSet.parseToArray(): List<T?> = parseToArray(T::class)
+    inline fun <reified T : Any> ResultSet.parseToArray(): List<T?> = parseToArray(T::class)
 
-    private inline fun <reified T : Any> ResultSet.parseToClass(): T? = parseToClass(T::class)
+    inline fun <reified T : Any> ResultSet.parseToClass(): T? = parseToClass(T::class)
 }

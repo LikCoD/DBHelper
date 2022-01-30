@@ -4,8 +4,8 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.*
 import liklibs.db.DB
-import liklibs.db.DBField
-import liklibs.db.DBInfo
+import liklibs.db.annotations.DBField
+import liklibs.db.annotations.DBInfo
 
 import java.io.File
 import kotlin.reflect.KClass
@@ -18,7 +18,10 @@ class TableUtils<T : Any>(
     credentialsFileName: String,
     private val c: KClass<T>,
     private val serialization: KSerializer<List<T>>,
-) : DB(c.findAnnotation<DBInfo>()?.dbName ?: throw IllegalArgumentException(), credentialsFileName) {
+) : DB(
+    c.java.declaringClass.kotlin.findAnnotation<DBInfo>()?.dbName ?: throw IllegalArgumentException(),
+    credentialsFileName
+) {
 
     private fun getLocalId(list: List<T>) = list.maxOf {
         it::class.declaredMemberProperties
@@ -26,8 +29,9 @@ class TableUtils<T : Any>(
             ?.getter?.call(it).toString().toInt()
     } + 1
 
-    private fun setId(list: List<T>, obj: T){
-        val idProperty = obj::class.declaredMemberProperties.find { (it.findAnnotation<DBField>()?.name ?: it.name) == "_id" }
+    private fun setId(list: List<T>, obj: T) {
+        val idProperty =
+            obj::class.declaredMemberProperties.find { (it.findAnnotation<DBField>()?.name ?: it.name) == "_id" }
         if (idProperty !is KMutableProperty<*>) return
 
         idProperty.setter.call(obj, getLocalId(list))

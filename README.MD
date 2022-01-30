@@ -1,4 +1,4 @@
-[![](https://jitpack.io/v/LikCoD/DBHelper.svg)](https://jitpack.io/#LikCoD/DBHelper)
+[//]: # ([![]&#40;https://jitpack.io/v/LikCoD/DBHelper.svg&#41;]&#40;https://jitpack.io/#LikCoD/DBHelper&#41;)
 
 # DBHelper
 
@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.LikCoD:DBHelper:0.1.3")
+    implementation("com.github.LikCoD:DBHelper:0.1.8")
 }
 ```
 
@@ -49,21 +49,33 @@ Examples:
 **1. Create simple data class**
 
 ```kotlin
-import liklibs.db.DBField
-import liklibs.db.DBInfo
-import liklibs.db.NotInsertable
 import kotlinx.serialization.Serializable
+import liklibs.db.Date
+import liklibs.db.Time
+import liklibs.db.Timestamp
+import liklibs.db.annotations.*
 
-@Serializable
-@DBInfo(
-    dbName = "dbname",
-    tableName = "tablename"
-)
-data class Table(
-    @NotInsertable @DBField("_id") var id: Int = 0,
-    @DBField("val") val value: String,
-    @DBField("_key") val key: String,
-)
+@DBInfo("dbName")
+sealed class DB{
+
+  @DBTable("primary")
+  @Serializable
+  data class Table1(
+    @DBField("prop1") var prop: String = "",
+    var prop2: Int = -1,
+    @NotInsertable var prop3: Int = -1,
+    @Primary var id: Int = -1
+  )
+
+  @DBTable("secondary")
+  @Serializable
+  data class Table2(
+    var prop4: Date = Date(),
+    var prop5: Timestamp = Timestamp(),
+    var prop6: Time = Time(),
+    @Primary var id: Int = -1
+  )
+}
 ```
 
 In this case there is data class with annotations:
@@ -84,6 +96,7 @@ dependencies {
 - `@DBInfo`
 - `@NotInsertable` - ignore this property
 - `@DBField` - use this annotation when name of property and field are different
+- `@Primary` - use for id field
 
 ****
 
@@ -124,14 +137,14 @@ Also, you need to create file db_credentials.json (or another name) with followi
 list.add(Table(value = "some_value", key = "some_key"))
 ```
 
-- id will be automatically filled if internet connection present
+- id will be automatically filled
 
 ```kotlin
 list.removeAt(1)
 ```
 
 - The second element will be deleted if internet connection doesn't present it will be deleted when user connect to
-  internet
+  internet (from list it will be deleted immediately)
 
 ****
 
