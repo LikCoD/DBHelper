@@ -1,93 +1,86 @@
 package liklibs.db
 
 import kotlinx.serialization.ExperimentalSerializationApi
-import liklibs.db.annotations.DBField
-import liklibs.db.annotations.DBTable
-import liklibs.db.annotations.NotInsertable
-import liklibs.db.annotations.Primary
+import liklibs.db.annotations.*
 import liklibs.db.utlis.DBUtils
 import java.sql.ResultSet
 import kotlin.reflect.KClass
-import kotlin.reflect.KMutableProperty
+import kotlin.reflect.KProperty1
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.primaryConstructor
 
 @ExperimentalSerializationApi
 open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbName, credentialsFileName) {
 
     fun <T : Any> selectToClass(c: KClass<T>): List<T?> {
-        var query = c.findAnnotation<DBTable>()?.selectQuery
-        if (query == null || query == "") query = "SELECT * FROM ${c.findAnnotation<DBTable>()?.tableName}"
+        val table = c.findAnnotation<DBTable>() ?: return emptyList()
+        val query = if (table.selectQuery == "") "SELECT * FROM ${table.tableName}" else table.selectQuery
 
-        val result = executeQuery(query) ?: return emptyList()
-
-        return result.parseToArray(c)
+        return executeQuery(query)?.parseToArray(c) ?: return emptyList()
     }
 
     fun <T : Any> insertFromClass(c: T) {
-        val table = c::class.findAnnotation<DBTable>()?.tableName ?: return
+        val tableName = c.annotation<DBTable>()?.tableName ?: return
 
-        var idProperty: KMutableProperty<*>? = null
+        var idProperty: KProperty1<*, *>? = null
 
-        val fields = c::class.declaredMemberProperties.mapNotNull {
-            if (it.findAnnotation<Primary>() != null && it is KMutableProperty<*>) {
+        val fields = c.members().mapNotNull {
+            if (it.hasAnnotation<Primary>()) {
                 idProperty = it
                 return@mapNotNull null
             }
-            if (it.findAnnotation<NotInsertable>() != null) return@mapNotNull null
+            if (it.hasAnnotation<NotInsertable>()) return@mapNotNull null
 
             val fieldName = it.findAnnotation<DBField>()?.name ?: it.name
 
-            fieldName to it.getter.call(c)
+            fieldName to it.get(c)
         }.toMap()
 
-        val id = insert(table, fields)
-        idProperty?.setter?.call(c, id)
+        val id = insert(tableName, fields)
+        idProperty?.set(c, id)
     }
 
     fun <T : Any> insertFromClass(objs: Collection<T>, parseId: Boolean = false) {
         if (objs.isEmpty()) return
 
-        val table = objs.first()::class.findAnnotation<DBTable>()?.tableName ?: return
+        val table = objs.first().annotation<DBTable>()?.tableName ?: return
 
         val keys = mutableListOf<String>()
         val values = MutableList(objs.size) {
             mutableListOf<Any?>()
         }
 
-        var idProperty: KMutableProperty<*>? = null
+        var idProperty: KProperty1<*, *>? = null
 
-        objs.first()::class.declaredMemberProperties.forEach {
+        objs.first().members().forEach {
             var fieldName = it.findAnnotation<DBField>()?.name ?: it.name
-            if (it.findAnnotation<Primary>() != null && it is KMutableProperty<*>) {
+            if (it.hasAnnotation<Primary>()) {
                 idProperty = it
                 if (!parseId) return@forEach
                 fieldName = "_id"
             }
 
-            if (it.findAnnotation<NotInsertable>() != null) return@forEach
+            if (it.hasAnnotation<NotInsertable>()) return@forEach
 
             keys.add(fieldName)
 
             objs.forEachIndexed { i, obj ->
-                values[i].add(it.getter.call(obj))
+                values[i].add(it.get(obj))
             }
         }
 
-
         val ids = insert(table, keys, *values.toTypedArray())
         objs.forEachIndexed { i, it ->
-            idProperty?.setter?.call(it, ids[i])
+            if (ids.size <= i) return@forEachIndexed
+            idProperty?.set(it, ids[i])
         }
     }
 
     fun <T : Any> deleteFromClass(c: T) {
-        val tableName = c::class.findAnnotation<DBTable>()?.tableName ?: return
-
-        val id = c::class.declaredMemberProperties
-            .find { it.findAnnotation<Primary>() != null }
-            ?.getter?.call(c) ?: return
+        val tableName = c.annotation<DBTable>()?.tableName ?: return
+        val id = c.getPropertyWithAnnotation<Primary>(c) ?: return
 
         delete(tableName, "_id = ${parseValue(id)}")
     }
@@ -95,14 +88,12 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
     fun <T : Any> deleteFromClass(objs: Collection<T>) {
         if (objs.isEmpty()) return
 
-        val tableName = objs.first()::class.findAnnotation<DBTable>()?.tableName ?: return
+        val tableName = objs.first().annotation<DBTable>()?.tableName ?: return
 
         val ids = mutableListOf<Any>()
 
         objs.forEach { c ->
-            val id = c::class.declaredMemberProperties
-                .find { it.findAnnotation<Primary>() != null }
-                ?.getter?.call(c) ?: return@forEach
+            val id = c.getPropertyWithAnnotation<Primary>(c) ?: return@forEach
 
             ids.add(id)
         }
@@ -111,23 +102,22 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
     }
 
     fun <T : Any> updateFromClass(c: T) {
-        val tableName = c::class.findAnnotation<DBTable>()?.tableName ?: return
+        val tableName = c.annotation<DBTable>()?.tableName ?: return
 
-        val id: Int? = null
+        var id: Int? = null
 
-        val fields = c::class.declaredMemberProperties.mapNotNull {
-            if (it.findAnnotation<Primary>() != null) {
-                it.getter.call(c)
+        val fields = c.members().mapNotNull {
+            if (it.hasAnnotation<Primary>()) {
+                id = it.get(c) as Int?
                 return@mapNotNull null
             }
 
-            if (it.findAnnotation<NotInsertable>() != null) return@mapNotNull null
+            if (it.hasAnnotation<NotInsertable>()) return@mapNotNull null
 
-            (it.findAnnotation<DBField>()?.name ?: it.name) to it.getter.call(c)
+            it.getDBFieldName() to it.get(c)
         }.toMap()
 
-        id ?: return
-        update(tableName, fields, id)
+        update(tableName, fields, id ?: return)
     }
 
     fun <T : Any> ResultSet.parseToArray(c: KClass<T>): List<T?> {
@@ -142,13 +132,11 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
         try {
             val constructor = c.primaryConstructor ?: return null
 
-            val fields = c.declaredMemberProperties
-                .associate {
-                    val field = if (it.findAnnotation<Primary>() != null) "_id"
-                    else it.findAnnotation<DBField>()?.name ?: it.name
+            val fields = c.declaredMemberProperties.associate {
+                val field = if (it.hasAnnotation<Primary>()) "_id" else it.getDBFieldName()
 
-                    it.name to parseResult(getObject(field))
-                }.toMutableMap()
+                it.name to parseResult(getObject(field))
+            }.toMutableMap()
 
             val constructorFields =
                 constructor.parameters.associateWith { fields[it.name].also { _ -> fields.remove(it.name) } }
@@ -156,9 +144,9 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
             val obj = constructor.callBy(constructorFields)
 
             c.declaredMemberProperties.forEach {
-                if (fields[it.name] == null || it !is KMutableProperty<*>) return@forEach
+                if (fields[it.name] == null) return@forEach
 
-                it.setter.call(obj, fields[it.name])
+                it.set(obj, fields[it.name])
             }
 
             return obj

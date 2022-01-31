@@ -3,10 +3,8 @@ package liklibs.db.utlis
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.*
-import liklibs.db.DB
-import liklibs.db.annotations.DBField
-import liklibs.db.annotations.DBInfo
-
+import liklibs.db.*
+import liklibs.db.annotations.*
 import java.io.File
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
@@ -18,22 +16,16 @@ class TableUtils<T : Any>(
     private val c: KClass<T>,
     private val serialization: KSerializer<List<T>>,
     private val dbInfo: DBInfo = c.java.declaringClass.kotlin.findAnnotation() ?: throw IllegalArgumentException(),
-    var offlineStoragePath: String = dbInfo.offlineStoragePath
+    var offlineStoragePath: String = dbInfo.offlineStoragePath,
 ) : DB(dbInfo.dbName, dbInfo.credentialsFilePath) {
 
-    private fun getLocalId(list: List<T>) = list.maxOf {
-        it::class.declaredMemberProperties
-            .find { p -> (p.findAnnotation<DBField>()?.name ?: p.name) == "_id" }
-            ?.getter?.call(it).toString().toInt()
-    } + 1
+    private fun getLocalId(list: List<T>): Int {
+        val max = list.maxOf { (it.getPropertyWithAnnotation<Primary>(it) as Int?) ?: 0 }
 
-    private fun setId(list: List<T>, obj: T) {
-        val idProperty =
-            obj::class.declaredMemberProperties.find { (it.findAnnotation<DBField>()?.name ?: it.name) == "_id" }
-        if (idProperty !is KMutableProperty<*>) return
-
-        idProperty.setter.call(obj, getLocalId(list))
+        return if (max < 0) 1 else max + 1
     }
+
+    private fun setId(list: List<T>, obj: T) = obj.setPropertyWithAnnotation<Primary>(obj, getLocalId(list))
 
     private fun setId(list: List<T>, objs: Collection<T>) = objs.forEach { setId(list, it) }
 
@@ -68,29 +60,23 @@ class TableUtils<T : Any>(
 
     fun delete(list: List<T>, obj: T) {
         if (isAvailable) deleteFromClass(obj)
-        else toJSON(fromJSON("_delete") + obj)
+        else deleteFromJson(obj)
 
         toJSON(list)
     }
 
     fun delete(list: List<T>, objs: Collection<T>) {
         if (isAvailable) deleteFromClass(objs)
-        else toJSON(fromJSON("_delete") + objs)
+        else objs.forEach { deleteFromJson(it) }
 
         toJSON(list)
-
     }
 
     fun update(list: List<T>, obj: T, oldObj: T) {
-        val id = oldObj::class.declaredMemberProperties
-            .find { (it.findAnnotation<DBField>()?.name ?: it.name) == "_id" }
-            ?.getter?.call(oldObj)?.toString()?.toIntOrNull() ?: return
+        val id = oldObj.getPropertyWithAnnotation<Primary>(oldObj)
 
-        val idProperty = obj::class.declaredMemberProperties
-            .find { (it.findAnnotation<DBField>()?.name ?: it.name) == "_id" }
-
-        if (idProperty !is KMutableProperty<*>) return
-        idProperty.setter.call(obj, id)
+        val idProperty = obj.setPropertyWithAnnotation<Primary>(obj, id)
+        if (idProperty != true) return
 
         if (isAvailable) updateFromClass(obj)
 
