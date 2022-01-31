@@ -11,10 +11,6 @@ import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSet
 import java.sql.Statement
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 
 @ExperimentalSerializationApi
 abstract class DBUtils(private val dbName: String, credentialsFileName: String? = null) {
@@ -45,52 +41,64 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
     internal open fun <T> parseList(list: Iterable<T>, parseValue: Boolean = true) =
         list.joinToString(prefix = "(", postfix = ")") { if (parseValue) parseValue(it) else it.toString() }
 
-    fun <T> insert(table: String, map: Map<String, T>): Int? {
+    fun <T> insertQuery(table: String, map: Map<String, T>): String {
         val fieldsQuery = parseList(map.keys, false)
         val valuesQuery = parseList(map.values)
         val updateQuery = map.keys.joinToString { "$it = EXCLUDED.$it" }
 
-        val res =
-            executeQuery("INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT (_id) DO UPDATE SET $updateQuery RETURNING _id")
+        //language=PostgreSQL
+        return "INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT (_id) DO UPDATE SET $updateQuery RETURNING _id;"
+    }
+
+    fun <T> insertQuery(table: String, keys: List<String>, vararg valuesList: List<T>): String {
+        val fieldsQuery = parseList(keys, false)
+        val valuesQuery = valuesList.joinToString(transform = ::parseList)
+        val updateQuery = keys.joinToString { "$it = EXCLUDED.$it" }
+
+        //language=PostgreSQL
+        return "INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT (_id) DO UPDATE SET $updateQuery RETURNING _id;"
+    }
+
+    fun <T> updateQuery(table: String, map: Map<String, T>, id: Int): String {
+        val fieldsQuery = map.entries.joinToString {
+            "SET ${it.key} = ${parseValue(it.value)}"
+        }
+
+        //language=PostgreSQL
+        return "UPDATE $table $fieldsQuery WHERE _id = $id"
+    }
+
+    fun selectQuery(table: String, fields: String = "*", filter: String? = null) =
+        "SELECT $fields FROM $table ${if (filter != null) "WHERE $filter" else ""}"
+
+    fun <T> insert(table: String, map: Map<String, T>): Int? {
+        val res = executeQuery(insertQuery(table, map))
 
         if (res == null || !res.next()) return null
 
         return res.getInt("_id")
     }
 
-    fun <T> insert(
-        table: String,
-        keys: List<String>,
-        vararg valuesList: List<T>,
-    ): List<Int?> {
-        val fieldsQuery = parseList(keys, false)
-        val valuesQuery = valuesList.joinToString(transform = ::parseList)
-        val updateQuery = keys.joinToString { "$it = EXCLUDED.$it" }
-
-        val res =
-            executeQuery("INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT (_id) DO UPDATE SET $updateQuery RETURNING _id")
+    fun <T> insert(table: String, keys: List<String>, vararg valuesList: List<T>): List<Int?> {
+        val res = executeQuery(insertQuery(table, keys, *valuesList)) ?: return emptyList()
 
         val ids = mutableListOf<Int?>()
-        while (res?.next() ?: return emptyList()) {
+        while (res.next()) {
             ids.add(res.getInt("_id"))
         }
 
         return ids
     }
 
-    fun <T> update(table: String, map: Map<String, T>, id: Int) {
-        val fieldsQuery = map.entries.joinToString {
-            "SET ${it.key} = ${parseValue(it.value)}"
-        }
-
-        println("UPDATE $table $fieldsQuery WHERE _id = $id")
-    }
+    fun <T> update(table: String, map: Map<String, T>, id: Int) = execute(updateQuery(table, map, id))
 
     fun select(table: String, fields: String = "*", filter: String? = null) =
-        executeQuery("SELECT $fields FROM $table ${if (filter != null) "WHERE $filter" else ""}")
+        executeQuery(selectQuery(table, fields, filter))
 
-    fun delete(table: String, filter: String) =
-        execute("DELETE FROM $table WHERE $filter")
+    @Language("PostgreSQL")
+    fun deleteQuery(table: String, filter: String) = "DELETE FROM $table WHERE $filter;"
+
+    fun delete(table: String, filter: String) = execute(deleteQuery(table, filter))
 
     internal open fun <T> parseValue(value: T): String = when (value) {
         is String -> "'${value.replace(Regex("['`]"), "")}'"

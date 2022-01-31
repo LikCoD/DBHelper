@@ -7,8 +7,6 @@ import liklibs.db.*
 import liklibs.db.annotations.*
 import java.io.File
 import kotlin.reflect.KClass
-import kotlin.reflect.KMutableProperty
-import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.findAnnotation
 
 @ExperimentalSerializationApi
@@ -25,18 +23,24 @@ class TableUtils<T : Any>(
         return if (max < 0) 1 else max + 1
     }
 
-    private fun setId(list: List<T>, obj: T) = obj.setPropertyWithAnnotation<Primary>(obj, getLocalId(list))
-
-    private fun setId(list: List<T>, objs: Collection<T>) = objs.forEach { setId(list, it) }
-
     fun sync(): List<T> {
         if (!isAvailable) return fromJSON()
 
         deleteFromClass(fromJSON("_delete"))
         toJSON(emptyList(), "_delete")
 
-        val list = fromJSON()
-        if (list.isNotEmpty()) insertFromClass(list, true)
+        val insertOld = fromJSON("_insert")
+        val insert = fromJSON("_insert")
+        insertFromClass(insert)
+
+        insertOld.forEachIndexed { i, el ->
+            changeDependenciesProperties(el, insert[i])
+        }
+
+        toJSON(emptyList(), "_insert")
+        toJSON(emptyList(), "_delete")
+
+        insertFromClass(fromJSON(), true)
 
         val syncedList = selectToClass(c).filterNotNull()
         toJSON(syncedList)
@@ -45,29 +49,106 @@ class TableUtils<T : Any>(
     }
 
     fun insert(list: List<T>, obj: T) {
-        if (isAvailable) insertFromClass(obj)
-        else setId(list, obj)
+        val query = insertFromClass(obj)
+
+        if (!isAvailable) {
+            val id = getLocalId(list)
+            obj.setPropertyWithAnnotation<Primary>(obj, id)
+            getFile("sql").appendText("$query --$id\n")
+        }
 
         toJSON(list)
     }
 
     fun insert(list: List<T>, objs: Collection<T>) {
-        if (isAvailable) insertFromClass(objs)
-        else setId(list, objs)
+        val query = insertFromClass(objs)
+        if (!isAvailable) {
+            val ids = objs.joinToString(",") { t ->
+                getLocalId(list).apply { t.setPropertyWithAnnotation<Primary>(t, this) }.toString()
+            }
+            getFile("sql").appendText("$query --$ids\n")
+        }
 
         toJSON(list)
     }
 
+    private fun findInsertedObj(obj: T): T? = fromJSON("_insert").find { t ->
+        val property = obj.findPropertyWithAnnotation<Primary>() ?: return@find false
+
+        val id = property.get(obj) ?: return@find false
+        val insertId = property.get(t) ?: return@find false
+
+        id == insertId
+    }
+
+    private fun deleteWithId(id: Int?): Boolean {
+        id ?: return false
+
+        val lines = getFile("sql").readLines().toMutableList()
+
+        for ((i, it) in lines.withIndex()) {
+            if (!it.startsWith("INSERT")) continue
+
+            val ids = it.substringAfter("--").split(",").toMutableList()
+            if (ids.isEmpty()) continue
+
+            if (ids.size == 1) {
+                if (ids.first().toIntOrNull() == id) {
+                    lines.removeAt(i)
+                    getFile("sql").writeText(lines.joinToString("\n", postfix = "\n"))
+                    return true
+                }
+                continue
+            }
+
+            iFor@ for ((j, s) in ids.withIndex()) {
+                if (s.toIntOrNull() != id) continue@iFor
+
+                val prefix = it.substring(0, it.indexOf("VALUES") + 7)
+                val postfix = it.substring(it.indexOf(" ON CONFLICT")).substringBefore(" --")
+
+                val parts =
+                    it.substringAfter(prefix).substringBefore(postfix).drop(1).dropLast(1).split("), (").toMutableList()
+                parts.removeAt(j)
+
+                ids.removeAt(j)
+
+                lines[i] = prefix + parts.joinToString { "($it)" } + postfix + " --" + ids.joinToString(",")
+
+                getFile("sql").writeText(lines.joinToString("\n", postfix = "\n"))
+
+                return true
+            }
+        }
+
+        return false
+    }
+
     fun delete(list: List<T>, obj: T) {
-        if (isAvailable) deleteFromClass(obj)
-        else deleteFromJson(obj)
+        val query = deleteFromClass(obj)
+        if (!isAvailable) {
+            val id = query?.substringAfter("_id = ")?.dropLast(1)?.toIntOrNull()
+            if (!deleteWithId(id)) getFile("sql").appendText("$query\n")
+        }
 
         toJSON(list)
     }
 
     fun delete(list: List<T>, objs: Collection<T>) {
-        if (isAvailable) deleteFromClass(objs)
-        else objs.forEach { deleteFromJson(it) }
+        var query = deleteFromClass(objs)
+        if (!isAvailable) {
+            val ids = query?.substringAfter("_id IN (")?.dropLast(2)?.split(", ")?.toMutableList()?.filter {
+                !deleteWithId(it.toIntOrNull())
+            }
+
+            if (ids != null && ids.isNotEmpty()) {
+                query = query?.substringBefore("IN (")
+                query += if (ids.size == 1) "= ${ids.first()}"
+                else "IN (${ids.joinToString()})"
+
+                getFile("sql").appendText("$query\n")
+            }
+        }
 
         toJSON(list)
     }
@@ -81,30 +162,49 @@ class TableUtils<T : Any>(
         if (isAvailable) updateFromClass(obj)
 
         toJSON(list)
+
+        val insertedObj = findInsertedObj(obj)
+
+        if (insertedObj != null) toJSON(fromJSON("_insert") - insertedObj + obj, "_insert")
+
+        changeDependenciesProperties(oldObj, obj)
     }
 
-    private fun fromJSON(postfix: String = ""): List<T> {
-        return try {
-            val file = File("$offlineStoragePath${c.simpleName}$postfix.json")
-            if (!file.exists()) return emptyList()
+    private fun getFile(extension: String = "", postfix: String = ""): File {
+        val path = "$offlineStoragePath${c.simpleName}$postfix.$extension"
+        File(path.substringBeforeLast("\\")).mkdirs()
 
-            Json.decodeFromStream(serialization, file.inputStream())
-        } catch (ex: Exception) {
-            emptyList()
-        }
+        return File(path).apply { if (!exists()) createNewFile() }
     }
 
-    private fun toJSON(obj: List<T>, postfix: String = "") {
-        try {
-            val path = "$offlineStoragePath${c.simpleName}$postfix.json"
-            File(path.substringBeforeLast("\\")).mkdirs()
+    private fun fromJSON(postfix: String = ""): List<T> = try {
+        Json.decodeFromStream(serialization, getFile("json", postfix).inputStream())
+    } catch (ex: Exception) {
+        emptyList()
+    }
 
-            val file = File(path)
-            if (!file.exists()) file.createNewFile()
+    private fun toJSON(obj: List<T>, postfix: String = "") = try {
+        Json.encodeToStream(serialization, obj, getFile("json", postfix).outputStream())
+    } catch (ex: Exception) {
+        ex.printStackTrace()
+    }
 
-            Json.encodeToStream(serialization, obj, file.outputStream())
-        } catch (ex: Exception) {
-            ex.printStackTrace()
+    private fun changeDependenciesProperties(oldObj: T, obj: T) {
+        oldObj.onAnnotationFind<Dependency> { property ->
+            val dependency = property.findAnnotation<Dependency>()!!
+            lists[dependency.listName]?.forEach { el ->
+                val dependencyProperty = el.findPropertyWithName(dependency.field)
+                val oldValue = dependencyProperty?.get(el) ?: return@forEach
+                if (oldValue != property.get(oldObj)) return@forEach
+
+                val newValue = property.get(obj)
+                dependencyProperty.set(el, newValue)
+
+                val id = el.getPropertyWithAnnotation<Primary>(el) ?: return@forEach
+                val tableName = el.annotation<DBTable>()?.tableName ?: return@forEach
+
+                execute("UPDATE $tableName SET ${dependency.field} = $newValue WHERE _id = $id")
+            }
         }
     }
 }

@@ -19,7 +19,7 @@ fun KProperty1<*, *>.get(obj: Any) = getter.call(obj)
 fun KProperty1<*, *>.set(obj: Any, value: Any?): Boolean {
     if (this !is KMutableProperty<*>) return false
 
-    println(setter.call(obj, value))
+    setter.call(obj, value)
     return true
 }
 

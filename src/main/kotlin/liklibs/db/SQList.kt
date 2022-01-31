@@ -6,6 +6,9 @@ import kotlinx.serialization.serializer
 import liklibs.db.utlis.TableUtils
 import kotlin.reflect.KClass
 
+ @ExperimentalSerializationApi
+ val lists: MutableMap<String, SQList<*>> = mutableMapOf()
+
 @ExperimentalSerializationApi
 class SQList<E : Any>(
     kClass: KClass<E>,
@@ -15,6 +18,8 @@ class SQList<E : Any>(
     val utils: TableUtils<E>
 
     init {
+        lists[kClass.simpleName.toString()] = this
+
         utils = TableUtils(kClass, serialization)
 
         list.addAll(utils.sync())
@@ -57,7 +62,7 @@ class SQList<E : Any>(
 
     override fun removeAt(index: Int): E =
         list.removeAt(index).also {
-            utils.delete(list, list[index])
+            utils.delete(list, it)
         }
 
     override fun set(index: Int, element: E): E {
