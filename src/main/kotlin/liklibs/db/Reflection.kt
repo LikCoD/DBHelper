@@ -35,6 +35,8 @@ fun Any.findPropertyWithName(name: String) = members().find { it.name == name }
 
 fun <T> Collection<T>.onFounded(filter: (T) -> Boolean, onEach: (T) -> Unit) = forEach { if (filter(it)) onEach(it) }
 
-inline fun <reified A : Annotation> Any.onAnnotationFind(noinline onEach: (KProperty1<out Any, *>) -> Unit) {
-    members().onFounded({ it.isAnnotation<A>() }, onEach)
+inline fun <reified A : Annotation> Any.onAnnotationFind(noinline onEach: (KProperty1<out Any, *>, A) -> Unit) {
+    members().onFounded({ it.isAnnotation<A>() }){
+        onEach(it, it.findAnnotation()!!)
+    }
 }

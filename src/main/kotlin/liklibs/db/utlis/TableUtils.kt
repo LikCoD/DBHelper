@@ -24,23 +24,35 @@ class TableUtils<T : Any>(
     }
 
     fun sync(): List<T> {
-        if (!isAvailable) return fromJSON()
+        val oldList = fromJSON()
+        if (!isAvailable) return oldList
 
-        deleteFromClass(fromJSON("_delete"))
-        toJSON(emptyList(), "_delete")
+        getFile("sql").readLines().forEach {
+            if (it.startsWith("DELETE")) {
+                execute(it)
+                return@forEach
+            }
 
-        val insertOld = fromJSON("_insert")
-        val insert = fromJSON("_insert")
-        insertFromClass(insert)
+            val oldIds = it.substringAfter("--").split(",").mapNotNull { i -> i.toIntOrNull() }
+            val ids = mutableListOf<Int>()
 
-        insertOld.forEachIndexed { i, el ->
-            changeDependenciesProperties(el, insert[i])
+            val res = executeQuery(it.substringBefore("; --")) ?: return@forEach
+            while (res.next()) ids.add(res.getInt("_id"))
+
+            oldList.forEach { t ->
+                val idProperty = t.findPropertyWithAnnotation<Primary>()
+                oldIds.forEachIndexed { i, oldId ->
+                    if (idProperty?.get(t) != oldId) return@forEachIndexed
+
+                    idProperty.set(t, ids[i])
+
+                    changeDependenciesProperties(t, newValue = ids[i])
+                }
+            }
         }
+        getFile("sql").writeText("")
 
-        toJSON(emptyList(), "_insert")
-        toJSON(emptyList(), "_delete")
-
-        insertFromClass(fromJSON(), true)
+        insertFromClass(oldList, true)
 
         val syncedList = selectToClass(c).filterNotNull()
         toJSON(syncedList)
@@ -189,16 +201,16 @@ class TableUtils<T : Any>(
         ex.printStackTrace()
     }
 
-    private fun changeDependenciesProperties(oldObj: T, obj: T) {
-        oldObj.onAnnotationFind<Dependency> { property ->
-            val dependency = property.findAnnotation<Dependency>()!!
+    private fun changeDependenciesProperties(oldObj: T, obj: T? = null, newValue: Any? = null) {
+        if (obj == null && newValue == null) return
+
+        oldObj.onAnnotationFind<Dependency> { property, dependency ->
             lists[dependency.listName]?.forEach { el ->
                 val dependencyProperty = el.findPropertyWithName(dependency.field)
                 val oldValue = dependencyProperty?.get(el) ?: return@forEach
                 if (oldValue != property.get(oldObj)) return@forEach
 
-                val newValue = property.get(obj)
-                dependencyProperty.set(el, newValue)
+                dependencyProperty.set(el, newValue ?: property.get(obj!!))
 
                 val id = el.getPropertyWithAnnotation<Primary>(el) ?: return@forEach
                 val tableName = el.annotation<DBTable>()?.tableName ?: return@forEach
