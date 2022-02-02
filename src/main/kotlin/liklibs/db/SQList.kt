@@ -60,11 +60,7 @@ class SQList<E : Any>(
         }
 
     override fun set(index: Int, element: E): E {
-        val oldElement = list[index]
-
-        return list.set(index, element).also {
-            utils.update(list, element, oldElement)
-        }
+        throw IllegalArgumentException("you cannot change full property")
     }
 
     fun save() = utils.toJSON(this)
