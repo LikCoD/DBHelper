@@ -1,18 +1,12 @@
 package liklibs.db
 
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.serializer
 import liklibs.db.utlis.TableUtils
 import kotlin.reflect.KClass
 
- @ExperimentalSerializationApi
- val lists: MutableMap<String, SQList<*>> = mutableMapOf()
+val lists: MutableMap<String, SQList<*>> = mutableMapOf()
 
-@ExperimentalSerializationApi
 class SQList<E : Any>(
     kClass: KClass<E>,
-    serialization: KSerializer<List<E>>,
     private val list: MutableList<E> = mutableListOf(),
 ) : MutableList<E> by list {
     val utils: TableUtils<E>
@@ -20,7 +14,7 @@ class SQList<E : Any>(
     init {
         lists[kClass.simpleName.toString()] = this
 
-        utils = TableUtils(kClass, serialization)
+        utils = TableUtils(kClass)
 
         list.addAll(utils.sync())
     }
@@ -72,8 +66,8 @@ class SQList<E : Any>(
             utils.update(list, element, oldElement)
         }
     }
+
+    fun save() = utils.toJSON(this)
 }
 
-@ExperimentalSerializationApi
-inline fun <reified T : Any> sqList() =
-    SQList(T::class, serializer())
+inline fun <reified T : Any> sqList() = SQList(T::class)

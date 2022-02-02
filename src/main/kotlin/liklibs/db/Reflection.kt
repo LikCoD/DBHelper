@@ -3,9 +3,11 @@ package liklibs.db
 import liklibs.db.annotations.DBField
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KProperty1
+import kotlin.reflect.KProperty
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
+import kotlin.reflect.jvm.isAccessible
 
 fun Any.members() = this::class.declaredMemberProperties
 
