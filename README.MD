@@ -121,8 +121,6 @@ There we use `sqList`
 - When user doesn't have internet access it save files locally
 - It loads data from file when you create it
 
-```
-
 ****
 
 **3. Work with list as mutableList**
