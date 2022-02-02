@@ -1,11 +1,9 @@
 package liklibs.db
 
-import kotlinx.serialization.Serializable
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
-@Serializable
 data class Date(
     var day: Int = -1,
     var month: Int = -1,
@@ -14,7 +12,6 @@ data class Date(
     override fun toString() = "$year-$month-$day"
 }
 
-@Serializable
 data class Time(
     var hour: Int = -1,
     var minute: Int = -1,
@@ -23,7 +20,6 @@ data class Time(
     override fun toString() = "$hour:$minute:$second"
 }
 
-@Serializable
 data class Timestamp(
     var day: Int = -1,
     var month: Int = -1,
