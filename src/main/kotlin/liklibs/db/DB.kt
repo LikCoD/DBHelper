@@ -19,8 +19,8 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
         return executeQuery(query)?.parseToArray(c) ?: return emptyList()
     }
 
-    fun <T : Any> insertFromClass(c: T): String? {
-        val tableName = c.annotation<DBTable>()?.tableName ?: return null
+    fun <T : Any> insertFromClass(c: T) {
+        val tableName = c.annotation<DBTable>()?.tableName ?: return
 
         var idProperty: KProperty1<*, *>? = null
 
@@ -36,17 +36,14 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
             fieldName to it.get(c)
         }.toMap()
 
-        return if (isAvailable) {
-            val id = insert(tableName, fields)
-            idProperty?.set(c, id)
-            null
-        } else insertQuery(tableName, fields)
+        val id = insert(tableName, fields)
+        idProperty?.set(c, id)
     }
 
-    fun <T : Any> insertFromClass(objs: Collection<T>, parseId: Boolean = false): String? {
-        if (objs.isEmpty()) return null
+    fun <T : Any> insertFromClass(objs: Collection<T>, parseId: Boolean = false) {
+        if (objs.isEmpty()) return
 
-        val table = objs.first().annotation<DBTable>()?.tableName ?: return null
+        val table = objs.first().annotation<DBTable>()?.tableName ?: return
 
         val keys = mutableListOf<String>()
         val values = MutableList(objs.size) {
@@ -72,65 +69,34 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
             }
         }
 
-        return if (isAvailable) {
-            val ids = insert(table, keys, *values.toTypedArray())
-            objs.forEachIndexed { i, it ->
-                if (ids.size <= i) return@forEachIndexed
-                idProperty?.set(it, ids[i])
-            }
-            null
-        } else insertQuery(table, keys, *values.toTypedArray())
+        val ids = insert(table, keys, *values.toTypedArray())
+        objs.forEachIndexed { i, it ->
+            if (ids.size <= i) return@forEachIndexed
+            idProperty?.set(it, ids[i])
+        }
     }
 
-    fun <T : Any> deleteFromClass(c: T): String? {
-        val tableName = c.annotation<DBTable>()?.tableName ?: return null
-        val id = c.getPropertyWithAnnotation<Primary>(c) ?: return null
+    fun <T : Any> deleteFromClass(c: T) {
+        val tableName = c.annotation<DBTable>()?.tableName ?: return
+        val id = c.getPropertyWithAnnotation<Primary>() ?: return
 
-        return if (isAvailable) {
-            delete(tableName, "_id = ${parseValue(id)}")
-            null
-        }else deleteQuery(tableName, "_id = ${parseValue(id)}")
+        delete(tableName, "_id = ${parseValue(id)}")
     }
 
-    fun <T : Any> deleteFromClass(objs: Collection<T>): String? {
-        if (objs.isEmpty()) return null
+    fun <T : Any> deleteFromClass(objs: Collection<T>) {
+        if (objs.isEmpty()) return
 
-        val tableName = objs.first().annotation<DBTable>()?.tableName ?: return null
+        val tableName = objs.first().annotation<DBTable>()?.tableName ?: return
 
         val ids = mutableListOf<Any>()
 
         objs.forEach { c ->
-            val id = c.getPropertyWithAnnotation<Primary>(c) ?: return@forEach
+            val id = c.getPropertyWithAnnotation<Primary>() ?: return@forEach
 
             ids.add(id)
         }
 
-        return if (isAvailable) {
-            delete(tableName, "_id IN ${ids.joinToString(prefix = "(", postfix = ")")}")
-            null
-        }else deleteQuery(tableName, "_id IN ${ids.joinToString(prefix = "(", postfix = ")")}")
-    }
-
-    fun <T : Any> updateFromClass(c: T): String? {
-        val tableName = c.annotation<DBTable>()?.tableName ?: return null
-
-        var id: Int? = null
-
-        val fields = c.members().mapNotNull {
-            if (it.hasAnnotation<Primary>()) {
-                id = it.get(c) as Int?
-                return@mapNotNull null
-            }
-
-            if (it.hasAnnotation<NotInsertable>()) return@mapNotNull null
-
-            it.getDBFieldName() to it.get(c)
-        }.toMap()
-
-        return if (isAvailable) {
-            update(tableName, fields, id ?: return null)
-            null
-        } else updateQuery(tableName, fields, id ?: return null)
+        delete(tableName, "_id IN ${ids.joinToString(prefix = "(", postfix = ")")}")
     }
 
     fun <T : Any> ResultSet.parseToArray(c: KClass<T>): List<T?> {
