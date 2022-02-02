@@ -1,7 +1,8 @@
 package liklibs.db.utlis
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import liklibs.db.*
 import org.intellij.lang.annotations.Language
 import org.postgresql.util.PSQLException
@@ -98,29 +99,14 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
 
     fun delete(table: String, filter: String) = execute(deleteQuery(table, filter))
 
-    internal open fun <T> parseValue(value: T): String = when (value) {
-        is String -> "'${value.replace(Regex("['`]"), "")}'"
-        is Iterable<*> -> value.joinToString(prefix = "{", postfix = "}") { parseValue(it) }
-        is Timestamp -> "TIMESTAMP '$value'"
-        is Date -> "DATE '$value'"
-        is Time -> "TIME '$value'"
-        else -> value.toString().replace(Regex("['`]"), "")
-    }
-
-    internal open fun <T> parseResult(value: T): Any? = when (value) {
-        null -> value
-        is java.sql.Timestamp -> value.toSQL()
-        is java.sql.Date -> value.toSQL()
-        is java.sql.Time -> value.toSQL()
-        else -> value
-    }
-
     init {
         if (credentialsFileName != null) {
             try {
-                Json.decodeFromStream<DBCredentials>(File(credentialsFileName).inputStream()).let {
-                    init(it.host, it.user, it.password)
-                }
+                Moshi.Builder().add(KotlinJsonAdapterFactory()).build().adapter(DBCredentials::class.java)
+                    .fromJson(File(credentialsFileName).readText()).let {
+                        it ?: return@let
+                        init(it.host, it.user, it.password)
+                    }
             } catch (ex: Exception) {
                 exception = ex.message
             }
@@ -140,5 +126,24 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
         }
 
         return false
+    }
+
+    companion object {
+        internal fun <T> parseValue(value: T): String = when (value) {
+            is String -> "'${value.replace(Regex("['`]"), "")}'"
+            is Iterable<*> -> value.joinToString(prefix = "{", postfix = "}") { parseValue(it) }
+            is Timestamp -> "TIMESTAMP '$value'"
+            is Date -> "DATE '$value'"
+            is Time -> "TIME '$value'"
+            else -> value.toString().replace(Regex("['`]"), "")
+        }
+
+        internal fun <T> parseResult(value: T): Any? = when (value) {
+            null -> value
+            is java.sql.Timestamp -> value.toSQL()
+            is java.sql.Date -> value.toSQL()
+            is java.sql.Time -> value.toSQL()
+            else -> value
+        }
     }
 }
