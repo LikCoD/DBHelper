@@ -22,6 +22,9 @@ dependencies {
     implementation("org.postgresql:postgresql:42.3.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.6.0")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.6.0")
+
+    implementation("com.squareup.moshi:moshi-kotlin:1.13.0")
+
     implementation(kotlin("reflect"))
 }
 

@@ -9,16 +9,18 @@ import java.io.File
 import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation
 
-@ExperimentalSerializationApi
 class TableUtils<T : Any>(
     private val c: KClass<T>,
-    private val serialization: KSerializer<List<T>>,
     private val dbInfo: DBInfo = c.java.declaringClass.kotlin.findAnnotation() ?: throw IllegalArgumentException(),
     var offlineStoragePath: String = dbInfo.offlineStoragePath,
 ) : DB(dbInfo.dbName, dbInfo.credentialsFilePath) {
 
-    private fun getLocalId(list: List<T>): Int {
-        val max = list.maxOf { (it.getPropertyWithAnnotation<Primary>(it) as Int?) ?: 0 }
+    @OptIn(ExperimentalStdlibApi::class)
+    private val jsonAdapter = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+        .adapter<List<T>>(Types.newParameterizedType(List::class.java, c.java))
+
+    private val infoAdapter = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+        .adapter(TableInfo::class.java)
 
         return if (max < 0) 1 else max + 1
     }
@@ -189,14 +191,15 @@ class TableUtils<T : Any>(
         return File(path).apply { if (!exists()) createNewFile() }
     }
 
-    private fun fromJSON(postfix: String = ""): List<T> = try {
-        Json.decodeFromStream(serialization, getFile("json", postfix).inputStream())
+
+    internal fun fromJSON(postfix: String = ""): List<T> = try {
+        jsonAdapter.fromJson(getFile(postfix).readText())!!
     } catch (ex: Exception) {
         emptyList()
     }
 
-    private fun toJSON(obj: List<T>, postfix: String = "") = try {
-        Json.encodeToStream(serialization, obj, getFile("json", postfix).outputStream())
+    internal fun toJSON(obj: List<T>, postfix: String = "") = try {
+        getFile(postfix).writeText(jsonAdapter.toJson(obj))
     } catch (ex: Exception) {
         ex.printStackTrace()
     }
