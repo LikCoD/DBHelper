@@ -4,6 +4,6 @@ package liklibs.db.annotations
 @Target(AnnotationTarget.PROPERTY)
 @MustBeDocumented
 annotation class Dependency(
-    val field: String = "",
-    val listName: String = ""
+    val field: String,
+    val listName: String
 )

@@ -22,23 +22,38 @@ fun KProperty1<*, *>.set(obj: Any, value: Any?): Boolean {
     if (this !is KMutableProperty<*>) return false
 
     setter.call(obj, value)
+
     return true
 }
 
-inline fun <reified A : Annotation> Any.getPropertyWithAnnotation(obj: Any) =
-    findPropertyWithAnnotation<A>()?.get(obj)
+inline fun <reified A : Annotation> Any.getPropertyWithAnnotation() =
+    findPropertyWithAnnotation<A>()?.get(this)
 
-inline fun <reified A : Annotation> Any.setPropertyWithAnnotation(obj: Any, value: Any?) =
-    findPropertyWithAnnotation<A>()?.set(obj, value)
+inline fun <reified A : Annotation> Any.setPropertyWithAnnotation( value: Any?) =
+    findPropertyWithAnnotation<A>()?.set(this, value)
 
-fun KProperty1<*, *>.getDBFieldName() = findAnnotation<DBField>()?.name ?: name
+fun KProperty<*>.getDBFieldName() = findAnnotation<DBField>()?.name ?: name
 
 fun Any.findPropertyWithName(name: String) = members().find { it.name == name }
 
 fun <T> Collection<T>.onFounded(filter: (T) -> Boolean, onEach: (T) -> Unit) = forEach { if (filter(it)) onEach(it) }
 
 inline fun <reified A : Annotation> Any.onAnnotationFind(noinline onEach: (KProperty1<out Any, *>, A) -> Unit) {
-    members().onFounded({ it.isAnnotation<A>() }){
+    members().onFounded({ it.isAnnotation<A>() }) {
         onEach(it, it.findAnnotation()!!)
     }
 }
+
+inline fun <T : Any, reified D : Any> KProperty1<*, *>.delegate(obj: T): D? {
+    @Suppress("UNCHECKED_CAST")
+    this as KProperty1<Any, *>
+
+    isAccessible = true
+    if (getDelegate(obj) !is D) return null
+
+
+    return getDelegate(obj) as D
+}
+
+inline fun <reified D : Any, reified A : Annotation> Any.findDelegateByAnnotation(): D? =
+    findPropertyWithAnnotation<A>()?.delegate(this)

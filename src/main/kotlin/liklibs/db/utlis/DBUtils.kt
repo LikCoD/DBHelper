@@ -1,6 +1,5 @@
 package liklibs.db.utlis
 
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import liklibs.db.*
@@ -12,7 +11,6 @@ import java.sql.DriverManager
 import java.sql.ResultSet
 import java.sql.Statement
 
-@ExperimentalSerializationApi
 abstract class DBUtils(private val dbName: String, credentialsFileName: String? = null) {
     private lateinit var connection: Connection
     private lateinit var statement: Statement

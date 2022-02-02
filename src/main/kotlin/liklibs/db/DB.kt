@@ -1,6 +1,5 @@
 package liklibs.db
 
-import kotlinx.serialization.ExperimentalSerializationApi
 import liklibs.db.annotations.*
 import liklibs.db.utlis.DBUtils
 import java.sql.ResultSet
@@ -11,7 +10,6 @@ import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.primaryConstructor
 
-@ExperimentalSerializationApi
 open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbName, credentialsFileName) {
 
     fun <T : Any> selectToClass(c: KClass<T>): List<T?> {
