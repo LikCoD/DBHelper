@@ -35,21 +35,23 @@ This library provide some tools that help us to communicate with postgreSQL
 
 Also, there is a sqList that sync with db or if user doesn't have internet connection save files locally
 
-To use date, time, timestamp - use this classes, because standard libs (`java.sql`) not serializable
+To use date, time, timestamp - use this classes
 
 ```kotlin
 liklibs.db.Date() // For dates
 liklibs.db.Time() // For times
 liklibs.db.Timestamp() // For timestamps
 ```
-
-Examples:
 ****
+
+#### **Do not edit property with @Primary annotation**
+
+****
+Examples:
 
 **1. Create simple data class**
 
 ```kotlin
-import kotlinx.serialization.Serializable
 import liklibs.db.Date
 import liklibs.db.Time
 import liklibs.db.Timestamp
@@ -59,39 +61,25 @@ import liklibs.db.annotations.*
 sealed class DB{
 
   @DBTable("primary")
-  @Serializable
-  data class Table1(
-    @DBField("prop1") var prop: String = "",
-    var prop2: Int = -1,
-    @NotInsertable var prop3: Int = -1,
-    @Primary var id: Int = -1
-  )
+  class Table1(prop1: String, prop2: Int, prop3: Int) {
+    var prop1 by dbProperty(prop1)
+    @Dependency("prop", "Table2") var prop2 by dbProperty(prop2)
+    @NotInsertable var prop3 by dbProperty(prop3)
+    @Primary var id by dbProperty(-1)
+  }
 
   @DBTable("secondary")
-  @Serializable
-  data class Table2(
-    var prop4: Date = Date(),
-    var prop5: Timestamp = Timestamp(),
-    var prop6: Time = Time(),
-    @Primary var id: Int = -1
-  )
+  data class Table2(prop4: Date, prop5: Timestamp, prop6: Time, prop7: Int) {
+    var prop4 by dbProperty(prop4)
+    var prop5 by dbProperty(prop5)
+    var prop6 by dbProperty(prop6)
+    @DBField("prop7") var prop by dbProperty(prop7)
+    @Primary var id by dbProperty(0)
+  }
 }
 ```
 
-In this case there is sealed class with data classes inside:
-
-- `@Serializable` - annotation that provide access to save/read JSON files
-  add this lines to build.gradle.kts
-
-```kotlin
-plugins {
-    kotlin("plugin.serialization") version "1.6.10"
-}
-
-dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
-}
-```
+In this case there is sealed class with classes inside:
 
 - `@DBInfo` - db name and credentials file, create it with following structure
 ```json
@@ -101,9 +89,16 @@ dependencies {
   "password": ""
 }
 ```
+- `dbProperty` - use to sync values and dependencies when you change variable
 - `@NotInsertable` - ignore this property
 - `@DBField` - use this annotation when name of property and field are different
 - `@Primary` - use for id field
+- `@DBTable` - table name, and query to set (if you want to use default query don't use this annotation field)
+- `@Dependency` - use this to show dependency one field from another, how does it work? So 
+- - We have two lists 
+- - list1 - list of Table1 class
+- - list2 - list of Table2 class
+- - When do `list1[0].prop2 = 1` all properties of Table2 class with name prop will be changed to prop2 value (`1` in this case)
 
 ****
 
@@ -148,21 +143,6 @@ list.removeAt(1)
 ****
 
 - You can use all functions as mutableList has
-
-****
-
-If you have specific select request you can use `@Select` annotation
-
-```kotlin
-@DBTable(
-    tableName = "tablename",
-    selectQuery = "SELECT _id, key_ FROM tablename"
-)
-data class Table(
-  @DBField("key_") val key: String,
-  @Primary val id: Int
-)
-```
 
 ****
 

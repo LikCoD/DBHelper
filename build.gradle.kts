@@ -17,8 +17,6 @@ repositories {
 dependencies {
     testImplementation(kotlin("test"))
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
-
     implementation("org.postgresql:postgresql:42.3.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.6.0")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.6.0")
@@ -57,7 +55,7 @@ publishing {
             register<MavenPublication>("gpr") {
                 groupId = "liklibs.db"
                 artifactId = "db-helper"
-                version = "0.2"
+                version = "0.3"
 
                 from(components["java"])
             }
