@@ -4,6 +4,7 @@ import liklibs.db.*
 import liklibs.db.annotations.DBTable
 import liklibs.db.annotations.Dependency
 import liklibs.db.annotations.Primary
+import liklibs.db.utlis.DBUtils
 import org.intellij.lang.annotations.Language
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
@@ -35,7 +36,8 @@ object DBProperty {
 
             if (thisList.utils.isAvailable) {
                 @Language("PostgreSQL")
-                val query = "UPDATE $tableName SET ${property.getDBFieldName()} = $value WHERE _id = $id"
+                val query =
+                    "UPDATE $tableName SET ${property.getDBFieldName()} = ${DBUtils.parseValue(value)} WHERE _id = $id"
                 thisList.utils.execute(query)
             }
             thisList.save()
@@ -57,7 +59,7 @@ object DBProperty {
                 val tableName = it.annotation<DBTable>()?.tableName
                     ?: throw IllegalStateException("No table name in dependency class")
 
-                list.utils.execute("UPDATE $tableName SET ${dependency.field} = $value WHERE _id = $id")
+                list.utils.execute("UPDATE $tableName SET ${dependency.field} = ${DBUtils.parseValue(value)} WHERE _id = $id")
             }
 
             list.save()
