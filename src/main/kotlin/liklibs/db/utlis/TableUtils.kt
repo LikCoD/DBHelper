@@ -52,6 +52,8 @@ class TableUtils<T : Any>(
 
         insertFromClass(oldList, true)
 
+        if (!info.wasOffline) return oldList
+
         val syncedList = selectToClass(c).filterNotNull()
         toJSON(syncedList)
 
