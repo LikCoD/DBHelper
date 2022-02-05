@@ -10,37 +10,33 @@ import kotlin.reflect.KProperty
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 
-object DBProperty {
-    open class Property<V>(var value: V) : ReadWriteProperty<Any?, V> {
+open class DBProperty<V>(var value: V) : ReadWriteProperty<Any?, V> {
 
-        override fun getValue(thisRef: Any?, property: KProperty<*>): V = value
+    override fun getValue(thisRef: Any?, property: KProperty<*>): V = value
 
-        override fun setValue(thisRef: Any?, property: KProperty<*>, value: V) {
-            this.value = value
+    override fun setValue(thisRef: Any?, property: KProperty<*>, value: V) {
+        this.value = value
 
-            if (!property.hasAnnotation<Primary>()) changeValueInDB(thisRef, property, value)
-        }
-
-        private fun changeValueInDB(thisRef: Any?, property: KProperty<*>, value: V) {
-            thisRef ?: throw IllegalArgumentException("Not in class")
-
-            val id = thisRef::class.getPropertyWithAnnotation<Primary>()
-                ?: throw IllegalStateException("No primary property in dependency class")
-            val tableName = thisRef::class.findAnnotation<DBTable>()?.tableName
-                ?: throw IllegalStateException("Provide table name")
-
-            val thisList = lists[thisRef::class.simpleName] ?: throw IllegalStateException("No list created")
-            thisList.save()
-
-            if (!thisList.utils.isAvailable) return
-
-            @Language("PostgreSQL")
-            val query = "UPDATE $tableName SET ${property.dbFieldName()} = ${DBUtils.parseValue(value)} WHERE _id = $id"
-            thisList.utils.execute(query)
-        }
+        if (!property.hasAnnotation<Primary>()) changeValueInDB(thisRef, property, value)
     }
 
-    fun <T> dbProperty(i: T): Property<T> = Property(i)
+    private fun changeValueInDB(thisRef: Any?, property: KProperty<*>, value: V) {
+        thisRef ?: throw IllegalArgumentException("Not in class")
+
+        val id = thisRef::class.getPropertyWithAnnotation<Primary>()
+            ?: throw IllegalStateException("No primary property in dependency class")
+        val tableName = thisRef::class.findAnnotation<DBTable>()?.tableName
+            ?: throw IllegalStateException("Provide table name")
+
+        val thisList = lists[thisRef::class.simpleName] ?: throw IllegalStateException("No list created")
+        thisList.save()
+
+        if (!thisList.utils.isAvailable) return
+
+        @Language("PostgreSQL")
+        val query = "UPDATE $tableName SET ${property.dbFieldName()} = ${DBUtils.parseValue(value)} WHERE _id = $id"
+        thisList.utils.execute(query)
+    }
 }
 
 

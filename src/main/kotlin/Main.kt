@@ -1,9 +1,8 @@
 import liklibs.db.annotations.DBInfo
 import liklibs.db.annotations.DBTable
-import liklibs.db.annotations.Dependency
 import liklibs.db.annotations.Primary
-import liklibs.db.delegates.DBDependency
-import liklibs.db.delegates.DBProperty
+import liklibs.db.delegates.dbDependency
+import liklibs.db.delegates.dbProperty
 import liklibs.db.lists
 import liklibs.db.sqList
 
@@ -11,20 +10,20 @@ import liklibs.db.sqList
 sealed class Main {
     @DBTable("t1")
     class Table1(value: String){
-        var value by DBDependency.dbDependency(value, listOf(Table2::value))
+        var value by dbDependency(value, Table2::value)
 
         @Primary
-        var id by DBProperty.dbProperty(0)
+        var id by dbProperty(0)
 
         override fun toString(): String = "(value: $value)"
     }
 
     @DBTable("t2")
     class Table2(value: String){
-        var value by DBProperty.dbProperty(value)
+        var value by dbProperty(value)
 
         @Primary
-        var id by DBProperty.dbProperty(0)
+        var id by dbProperty(0)
 
         override fun toString(): String = "(value: $value)"
     }
