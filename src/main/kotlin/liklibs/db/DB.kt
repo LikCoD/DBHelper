@@ -112,7 +112,7 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
             val constructor = c.primaryConstructor ?: return null
 
             val fields = c.declaredMemberProperties.associate {
-                val field = if (it.hasAnnotation<Primary>()) "_id" else it.getDBFieldName()
+                val field = if (it.hasAnnotation<Primary>()) "_id" else it.dbFieldName()
 
                 it.name to parseResult(getObject(field))
             }.toMutableMap()

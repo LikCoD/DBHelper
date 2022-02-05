@@ -16,9 +16,9 @@ inline fun <reified A : Annotation> Any.findPropertyWithAnnotation() = members()
 inline fun <reified A : Annotation> Any.annotation(): A? = this::class.findAnnotation()
 inline fun <reified A : Annotation> Any.isAnnotation(): Boolean = this::class.hasAnnotation<A>()
 
-fun KProperty1<*, *>.get(obj: Any) = getter.call(obj)
+fun KProperty<*>.get(obj: Any) = getter.call(obj)
 
-fun KProperty1<*, *>.set(obj: Any, value: Any?): Boolean {
+fun KProperty<*>.set(obj: Any, value: Any?): Boolean {
     if (this !is KMutableProperty<*>) return false
 
     setter.call(obj, value)
@@ -32,7 +32,7 @@ inline fun <reified A : Annotation> Any.getPropertyWithAnnotation() =
 inline fun <reified A : Annotation> Any.setPropertyWithAnnotation( value: Any?) =
     findPropertyWithAnnotation<A>()?.set(this, value)
 
-fun KProperty<*>.getDBFieldName() = findAnnotation<DBField>()?.name ?: name
+fun KProperty<*>.dbFieldName() = findAnnotation<DBField>()?.name ?: name
 
 fun Any.findPropertyWithName(name: String) = members().find { it.name == name }
 
