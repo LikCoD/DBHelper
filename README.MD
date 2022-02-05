@@ -56,6 +56,8 @@ import liklibs.db.Date
 import liklibs.db.Time
 import liklibs.db.Timestamp
 import liklibs.db.annotations.*
+import liklibs.db.delegates.dbDependency
+import liklibs.db.delegates.dbProperty
 
 @DBInfo("dbName", "db_credentials.json")
 sealed class DB{
@@ -63,7 +65,7 @@ sealed class DB{
   @DBTable("primary")
   class Table1(prop1: String, prop2: Int, prop3: Int) {
     var prop1 by dbProperty(prop1)
-    @Dependency("prop", "Table2") var prop2 by dbProperty(prop2)
+    var prop2 by dbDependency(prop2, Table2::prop4)
     @NotInsertable var prop3 by dbProperty(prop3)
     @Primary var id by dbProperty(-1)
   }
@@ -94,7 +96,7 @@ In this case there is sealed class with classes inside:
 - `@DBField` - use this annotation when name of property and field are different
 - `@Primary` - use for id field
 - `@DBTable` - table name, and query to set (if you want to use default query don't use this annotation field)
-- `@Dependency` - use this to show dependency one field from another, how does it work? So 
+- `dbDependency` - use this delegate to show dependency one field from another, how does it work? So 
 - - We have two lists 
 - - list1 - list of Table1 class
 - - list2 - list of Table2 class
