@@ -31,7 +31,7 @@ class TableUtils<T : Any>(
         val oldList = fromJSON()
         if (!isAvailable) {
             info.index = if (oldList.isEmpty()) 1
-            else oldList.maxOf { it.getPropertyWithAnnotation<Primary>() as Int }
+            else oldList.maxOf { it::class.getPropertyWithAnnotation<Primary>() as Int }
             return oldList
         }
 
@@ -40,7 +40,7 @@ class TableUtils<T : Any>(
             execute("DELETE FROM $tableName WHERE _id IN (${info.deleteIds.joinToString()})")
 
         info.insertsIds.forEach { id ->
-            val element = oldList.find { it.getPropertyWithAnnotation<Primary>() == id } ?: return@forEach
+            val element = oldList.find { it::class.getPropertyWithAnnotation<Primary>() == id } ?: return@forEach
 
             insertFromClass(element)
         }
@@ -63,7 +63,7 @@ class TableUtils<T : Any>(
     fun insert(list: List<T>, obj: T) {
         if (!isAvailable) {
             val id = getLocalId()
-            obj.setPropertyWithAnnotation<Primary>(id)
+            obj::class.setPropertyWithAnnotation<Primary>(id)
 
             info.insertsIds.add(id)
             saveInfo()
@@ -75,7 +75,7 @@ class TableUtils<T : Any>(
     fun insert(list: List<T>, objs: Collection<T>) {
         if (!isAvailable) {
             val ids = objs.map { t ->
-                getLocalId().apply { t.setPropertyWithAnnotation<Primary>(this) }
+                getLocalId().apply { t::class.setPropertyWithAnnotation<Primary>(this) }
             }
 
             info.insertsIds.addAll(ids)
@@ -87,7 +87,7 @@ class TableUtils<T : Any>(
 
     fun delete(list: List<T>, obj: T) {
         if (!isAvailable) {
-            val id = obj.getPropertyWithAnnotation<Primary>() as Int
+            val id = obj::class.getPropertyWithAnnotation<Primary>() as Int
 
             if (!info.insertsIds.remove(id)) info.deleteIds.add(id)
 
@@ -100,7 +100,7 @@ class TableUtils<T : Any>(
     fun delete(list: List<T>, objs: Collection<T>) {
         if (!isAvailable) {
             objs.forEach { obj ->
-                val id = obj.getPropertyWithAnnotation<Primary>() as Int
+                val id = obj::class.getPropertyWithAnnotation<Primary>() as Int
 
                 if (!info.insertsIds.remove(id)) info.deleteIds.add(id)
             }

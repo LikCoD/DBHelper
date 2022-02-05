@@ -6,12 +6,11 @@ import liklibs.db.annotations.DBTable
 import liklibs.db.annotations.Primary
 import liklibs.db.utlis.DBUtils
 import kotlin.reflect.KProperty
-import kotlin.reflect.KProperty1
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.jvm.javaField
 
 object DBDependency {
-    class Property<V>(value: V, private val propertyList: List<KProperty1<*, *>>) : DBProperty.Property<V>(value) {
+    class Property<V>(value: V, private val propertyList: List<KProperty<*>>) : DBProperty.Property<V>(value) {
 
         override fun setValue(thisRef: Any?, property: KProperty<*>, value: V) {
             val oldValue = this.value
@@ -29,9 +28,9 @@ object DBDependency {
 
                     if (!list.utils.isAvailable) return@forEach
 
-                    val id = it.getPropertyWithAnnotation<Primary>()
+                    val id = it::class.getPropertyWithAnnotation<Primary>()
                         ?: throw IllegalStateException("No primary property in dependency class")
-                    val tableName = it.annotation<DBTable>()?.tableName
+                    val tableName = it::class.findAnnotation<DBTable>()?.tableName
                         ?: throw IllegalStateException("No table name in dependency class")
 
                     val field = dependencyProperty.findAnnotation<DBField>()?.name ?: dependencyProperty.name
@@ -44,7 +43,7 @@ object DBDependency {
         }
     }
 
-    fun <T> dbDependency(i: T, propertyList: List<KProperty1<*, *>>): Property<T> = Property(i, propertyList)
+    fun <T> dbDependency(i: T, propertyList: List<KProperty<*>>): Property<T> = Property(i, propertyList)
 }
 
 

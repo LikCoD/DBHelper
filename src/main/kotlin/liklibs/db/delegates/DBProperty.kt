@@ -7,6 +7,7 @@ import liklibs.db.utlis.DBUtils
 import org.intellij.lang.annotations.Language
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
+import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 
 object DBProperty {
@@ -21,10 +22,12 @@ object DBProperty {
         }
 
         private fun changeValueInDB(thisRef: Any?, property: KProperty<*>, value: V) {
-            val id = thisRef?.getPropertyWithAnnotation<Primary>()
+            thisRef ?: throw IllegalArgumentException("Not in class")
+
+            val id = thisRef::class.getPropertyWithAnnotation<Primary>()
                 ?: throw IllegalStateException("No primary property in dependency class")
-            val tableName =
-                thisRef.annotation<DBTable>()?.tableName ?: throw IllegalStateException("Provide table name")
+            val tableName = thisRef::class.findAnnotation<DBTable>()?.tableName
+                ?: throw IllegalStateException("Provide table name")
 
             val thisList = lists[thisRef::class.simpleName] ?: throw IllegalStateException("No list created")
             thisList.save()
