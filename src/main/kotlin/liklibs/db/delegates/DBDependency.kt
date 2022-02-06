@@ -1,9 +1,12 @@
 package liklibs.db.delegates
 
-import liklibs.db.*
 import liklibs.db.annotations.DBField
 import liklibs.db.annotations.DBTable
 import liklibs.db.annotations.Primary
+import liklibs.db.get
+import liklibs.db.getPropertyWithAnnotation
+import liklibs.db.lists
+import liklibs.db.set
 import liklibs.db.utlis.DBUtils
 import kotlin.reflect.KProperty
 import kotlin.reflect.full.findAnnotation
@@ -23,7 +26,9 @@ class DBDependency<V>(value: V, private vararg val propertyList: KProperty<*>) :
             val parent = dependencyProperty.javaField!!.declaringClass.kotlin
             val list = lists[parent.simpleName] ?: return@propertiesFor
             list.forEach {
-                if ((dependencyProperty.get(it) ?: return@forEach) == oldValue) dependencyProperty.set(it, value)
+                if ((dependencyProperty.get(it) ?: return@forEach) != oldValue) return@forEach
+
+                dependencyProperty.set(it, value)
 
                 if (!list.utils.isAvailable) return@forEach
 
