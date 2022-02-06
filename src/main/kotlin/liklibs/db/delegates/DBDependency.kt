@@ -21,7 +21,7 @@ class DBDependency<V>(value: V, private vararg val propertyList: KProperty<*>) :
     private fun changeDependencies(value: V, oldValue: V) {
         propertyList.forEach propertiesFor@{ dependencyProperty ->
             val parent = dependencyProperty.javaField!!.declaringClass.kotlin
-            val list = lists[parent.simpleName] ?: throw IllegalArgumentException("No list with this name")
+            val list = lists[parent.simpleName] ?: return@propertiesFor
             list.forEach {
                 if ((dependencyProperty.get(it) ?: return@forEach) == oldValue) dependencyProperty.set(it, value)
 
