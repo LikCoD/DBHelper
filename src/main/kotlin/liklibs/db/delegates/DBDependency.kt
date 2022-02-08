@@ -32,7 +32,7 @@ class DBDependency<V>(value: V, private vararg val propertyList: KProperty<*>) :
 
                 if (!list.utils.isAvailable) return@forEach
 
-                val id = it::class.getPropertyWithAnnotation<Primary>()
+                val id = it::class.getPropertyWithAnnotation<Primary>(it)
                     ?: throw IllegalStateException("No primary property in dependency class")
                 val tableName = it::class.findAnnotation<DBTable>()?.tableName
                     ?: throw IllegalStateException("No table name in dependency class")

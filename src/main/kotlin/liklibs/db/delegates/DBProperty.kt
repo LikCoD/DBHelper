@@ -23,7 +23,7 @@ open class DBProperty<V>(var value: V) : ReadWriteProperty<Any?, V> {
     private fun changeValueInDB(thisRef: Any?, property: KProperty<*>, value: V) {
         thisRef ?: throw IllegalArgumentException("Not in class")
 
-        val id = thisRef::class.getPropertyWithAnnotation<Primary>()
+        val id = thisRef::class.getPropertyWithAnnotation<Primary>(thisRef)
             ?: throw IllegalStateException("No primary property in dependency class")
         val tableName = thisRef::class.findAnnotation<DBTable>()?.tableName
             ?: throw IllegalStateException("Provide table name")

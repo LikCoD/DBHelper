@@ -30,14 +30,8 @@ sealed class Main {
 }
 
 fun main(){
-    val t1 = sqList<Main.Table1>()
-    val t2 = sqList<Main.Table2>()
-
-    lists.forEach { (t, u) ->
-        println("$t: ${u.toList()}")
-    }
-
-    t1[0].value = "value...."
+    val t1 = sqList<DB.DelegateTest>()
+    val t2 = sqList<DB.DepTest>()
 
     lists.forEach { (t, u) ->
         println("$t: ${u.toList()}")

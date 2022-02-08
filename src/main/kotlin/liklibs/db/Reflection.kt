@@ -22,10 +22,10 @@ fun KProperty<*>.set(obj: Any, value: Any?): Boolean {
     return true
 }
 
-inline fun <reified A : Annotation> KClass<*>.getPropertyWithAnnotation() =
-    findPropertyWithAnnotation<A>()?.get(this)
+inline fun <reified A : Annotation> KClass<*>.getPropertyWithAnnotation(obj: Any) =
+    findPropertyWithAnnotation<A>()?.get(obj)
 
-inline fun <reified A : Annotation> KClass<*>.setPropertyWithAnnotation( value: Any?) =
-    findPropertyWithAnnotation<A>()?.set(this, value)
+inline fun <reified A : Annotation> KClass<*>.setPropertyWithAnnotation(obj: Any, value: Any?) =
+    findPropertyWithAnnotation<A>()?.set(obj, value)
 
 fun KProperty<*>.dbFieldName() = findAnnotation<DBField>()?.name ?: name

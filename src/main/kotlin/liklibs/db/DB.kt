@@ -78,7 +78,7 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
 
     fun <T : Any> deleteFromClass(c: T) {
         val tableName = c::class.findAnnotation<DBTable>()?.tableName ?: return
-        val id = c::class.getPropertyWithAnnotation<Primary>() ?: return
+        val id = c::class.getPropertyWithAnnotation<Primary>(c) ?: return
 
         delete(tableName, "_id = ${parseValue(id)}")
     }
@@ -91,7 +91,7 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
         val ids = mutableListOf<Any>()
 
         objs.forEach { c ->
-            val id = c::class.getPropertyWithAnnotation<Primary>() ?: return@forEach
+            val id = c::class.getPropertyWithAnnotation<Primary>(c) ?: return@forEach
 
             ids.add(id)
         }
