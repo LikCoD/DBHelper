@@ -1,52 +1,60 @@
 package liklibs.db.utlis
 
 import com.squareup.moshi.Moshi
-import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import liklibs.db.*
+import liklibs.db.DBCredentials
+import liklibs.db.DBData
 import org.intellij.lang.annotations.Language
-import org.postgresql.util.PSQLException
 import java.io.File
-import java.sql.Connection
-import java.sql.DriverManager
-import java.sql.ResultSet
-import java.sql.Statement
+import java.sql.*
 
-abstract class DBUtils(private val dbName: String, credentialsFileName: String? = null) {
-    private lateinit var connection: Connection
-    private lateinit var statement: Statement
+abstract class DBUtils(private val dbName: String, val dbData: DBData, credentialsFileName: String? = null) {
+    lateinit var connection: Connection
+    lateinit var statement: Statement
 
     var isAvailable = false
     var exception: String? = null
+
+    val log = mutableListOf<String>()
 
     internal open fun printError(query: String, ex: Exception) {
         println("${ex.message?.replace("\n", " ")}\nQUERY: $query".trim())
     }
 
-    fun execute(@Language("PostgreSQL") query: String) = try {
+    fun execute(@Language("SQL") query: String) = try {
+        log.add(query)
         statement.execute(query)
     } catch (ex: Exception) {
         printError(query, ex)
         false
     }
 
-    fun executeQuery(@Language("PostgreSQL") query: String): ResultSet? = try {
+    fun executeQuery(@Language("SQL") query: String): ResultSet? = try {
+        log.add(query)
         statement.executeQuery(query)
     } catch (ex: Exception) {
         printError(query, ex)
         null
     }
 
+    fun executeUpdate(@Language("SQL") query: String) = try {
+        log.add(query)
+        statement.executeUpdate(query)
+    } catch (ex: Exception) {
+        printError(query, ex)
+        null
+    }
+
     internal open fun <T> parseList(list: Iterable<T>, parseValue: Boolean = true) =
-        list.joinToString(prefix = "(", postfix = ")") { if (parseValue) parseValue(it) else it.toString() }
+        list.joinToString(prefix = "(", postfix = ")") { if (parseValue) dbData.parseValue(it) else it.toString() }
 
     fun <T> insertQuery(table: String, map: Map<String, T>): String {
         val fieldsQuery = parseList(map.keys, false)
         val valuesQuery = parseList(map.values)
         val updateQuery = map.keys.joinToString { "$it = EXCLUDED.$it" }
 
-        //language=PostgreSQL
-        return "INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT (_id) DO UPDATE SET $updateQuery RETURNING _id;"
+        //language=SQL
+        return "INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT (_id) DO UPDATE SET $updateQuery"
     }
 
     fun <T> insertQuery(table: String, keys: List<String>, vararg valuesList: List<T>): String {
@@ -54,16 +62,16 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
         val valuesQuery = valuesList.joinToString(transform = ::parseList)
         val updateQuery = keys.joinToString { "$it = EXCLUDED.$it" }
 
-        //language=PostgreSQL
-        return "INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT (_id) DO UPDATE SET $updateQuery RETURNING _id;"
+        //language=SQL
+        return "INSERT INTO $table $fieldsQuery VALUES $valuesQuery ON CONFLICT (_id) DO UPDATE SET $updateQuery"
     }
 
     fun <T> updateQuery(table: String, map: Map<String, T>, id: Int): String {
         val fieldsQuery = map.entries.joinToString {
-            "SET ${it.key} = ${parseValue(it.value)}"
+            "SET ${it.key} = ${dbData.parseValue(it.value)}"
         }
 
-        //language=PostgreSQL
+        //language=SQL
         return "UPDATE $table $fieldsQuery WHERE _id = $id"
     }
 
@@ -71,7 +79,9 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
         "SELECT $fields FROM $table ${if (filter != null) "WHERE $filter" else ""}"
 
     fun <T> insert(table: String, map: Map<String, T>): Int? {
-        val res = executeQuery(insertQuery(table, map))
+        executeUpdate(insertQuery(table, map))
+
+        val res = statement.executeQuery("SELECT _id FROM $table ORDER BY _id DESC LIMIT 1")
 
         if (res == null || !res.next()) return null
 
@@ -79,12 +89,13 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
     }
 
     fun <T> insert(table: String, keys: List<String>, vararg valuesList: List<T>): List<Int?> {
-        val res = executeQuery(insertQuery(table, keys, *valuesList)) ?: return emptyList()
+        executeQuery(insertQuery(table, keys, *valuesList)) ?: return emptyList()
 
-        val ids = mutableListOf<Int?>()
-        while (res.next()) {
-            ids.add(res.getInt("_id"))
-        }
+        val result = statement.executeQuery("SELECT _id FROM $table ORDER BY _id DESC LIMIT ${valuesList.size}")
+
+        val ids = mutableListOf<Int>()
+
+        while (result.next()) ids.add(0, result.getInt("_id"))
 
         return ids
     }
@@ -94,7 +105,7 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
     fun select(table: String, fields: String = "*", filter: String? = null) =
         executeQuery(selectQuery(table, fields, filter))
 
-    @Language("PostgreSQL")
+    @Language("SQL")
     fun deleteQuery(table: String, filter: String) = "DELETE FROM $table WHERE $filter;"
 
     fun delete(table: String, filter: String) = execute(deleteQuery(table, filter))
@@ -103,47 +114,30 @@ abstract class DBUtils(private val dbName: String, credentialsFileName: String? 
         if (credentialsFileName != null) {
             try {
                 Moshi.Builder().add(KotlinJsonAdapterFactory()).build().adapter(DBCredentials::class.java)
-                    .fromJson(File(credentialsFileName).readText()).let {
-                        it ?: return@let
+                    .fromJson(File(credentialsFileName).readText())?.let {
+
                         init(it.host, it.user, it.password)
                     }
             } catch (ex: Exception) {
                 exception = ex.message
             }
         }
+
+        if (!dbData.userRequire) init("db", divider = "")
     }
 
-    fun init(url: String, user: String, password: String): Boolean {
+    fun init(url: String, user: String? = null, password: String? = null, divider: String = "//"): Boolean {
         try {
-            connection = DriverManager.getConnection("jdbc:postgresql://$url/$dbName", user, password)
+            connection = DriverManager.getConnection("jdbc:${dbData.jdbcName}:$divider$url/$dbName", user, password)
             statement = connection.createStatement()
 
             isAvailable = true
             return true
-        } catch (ex: PSQLException) {
+        } catch (ex: SQLException) {
             exception = ex.message
             println(ex.message)
         }
 
         return false
-    }
-
-    companion object {
-        internal fun <T> parseValue(value: T): String = when (value) {
-            is String -> "'${value.replace(Regex("['`]"), "")}'"
-            is Iterable<*> -> value.joinToString(prefix = "{", postfix = "}") { parseValue(it) }
-            is Timestamp -> "TIMESTAMP '$value'"
-            is Date -> "DATE '$value'"
-            is Time -> "TIME '$value'"
-            else -> value.toString().replace(Regex("['`]"), "")
-        }
-
-        internal fun <T> parseResult(value: T): Any? = when (value) {
-            null -> value
-            is java.sql.Timestamp -> value.toSQL()
-            is java.sql.Date -> value.toSQL()
-            is java.sql.Time -> value.toSQL()
-            else -> value
-        }
     }
 }

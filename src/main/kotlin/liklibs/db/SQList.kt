@@ -3,8 +3,6 @@ package liklibs.db
 import liklibs.db.utlis.TableUtils
 import kotlin.reflect.KClass
 
-val lists: MutableMap<String, SQList<*>> = mutableMapOf()
-
 class SQList<E : Any>(
     kClass: KClass<E>,
     private val list: MutableList<E> = mutableListOf(),

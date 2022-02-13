@@ -15,27 +15,27 @@ open class DBProperty<V>(var value: V) : ReadWriteProperty<Any?, V> {
     override fun getValue(thisRef: Any?, property: KProperty<*>): V = value
 
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: V) {
-        this.value = value
-
-        if (!property.hasAnnotation<Primary>()) changeValueInDB(thisRef, property, value)
-    }
-
-    private fun changeValueInDB(thisRef: Any?, property: KProperty<*>, value: V) {
         thisRef ?: throw IllegalArgumentException("Not in class")
 
+        this.value = value
+        if (property.hasAnnotation<Primary>()) return
+
+        val utils = lists[thisRef::class.simpleName]?.utils ?: throw IllegalStateException("No list created")
+
+        updateDb(thisRef, property, value, SQLiteData, utils.offlineDB)
+        if (utils.onlineDB.isAvailable) updateDb(thisRef, property, value, PostgresData, utils.onlineDB)
+    }
+
+    private fun updateDb(thisRef: Any, property: KProperty<*>, value: V, dbData: DBData, db: DBUtils) {
         val id = thisRef::class.getPropertyWithAnnotation<Primary>(thisRef)
             ?: throw IllegalStateException("No primary property in dependency class")
         val tableName = thisRef::class.findAnnotation<DBTable>()?.tableName
             ?: throw IllegalStateException("Provide table name")
 
-        val thisList = lists[thisRef::class.simpleName] ?: throw IllegalStateException("No list created")
-        thisList.save()
+        @Language("SQL")
+        val query = "UPDATE $tableName SET ${property.dbFieldName()} = ${dbData.parseValue(value)} WHERE _id = $id"
 
-        if (!thisList.utils.isAvailable) return
-
-        @Language("PostgreSQL")
-        val query = "UPDATE $tableName SET ${property.dbFieldName()} = ${DBUtils.parseValue(value)} WHERE _id = $id"
-        thisList.utils.execute(query)
+        db.executeUpdate(query)
     }
 }
 

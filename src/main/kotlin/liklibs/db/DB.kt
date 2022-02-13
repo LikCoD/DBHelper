@@ -10,7 +10,8 @@ import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.primaryConstructor
 
-open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbName, credentialsFileName) {
+open class DB(dbName: String, dbData: DBData, credentialsFileName: String? = null) :
+    DBUtils(dbName, dbData, credentialsFileName) {
 
     fun <T : Any> selectToClass(c: KClass<T>): List<T?> {
         val table = c.findAnnotation<DBTable>() ?: return emptyList()
@@ -19,8 +20,8 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
         return executeQuery(query)?.parseToArray(c) ?: return emptyList()
     }
 
-    fun <T : Any> insertFromClass(c: T) {
-        val tableName = c::class.findAnnotation<DBTable>()?.tableName ?: return
+    fun <T : Any> insertFromClass(c: T): Int? {
+        val tableName = c::class.findAnnotation<DBTable>()?.tableName ?: return null
 
         var idProperty: KProperty1<*, *>? = null
 
@@ -38,12 +39,14 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
 
         val id = insert(tableName, fields)
         idProperty?.set(c, id)
+
+        return id
     }
 
-    fun <T : Any> insertFromClass(objs: Collection<T>, parseId: Boolean = false) {
-        if (objs.isEmpty()) return
+    fun <T : Any> insertFromClass(objs: Collection<T>, parseId: Boolean = false): List<Int?> {
+        if (objs.isEmpty()) return emptyList()
 
-        val table = objs.first()::class.findAnnotation<DBTable>()?.tableName ?: return
+        val table = objs.first()::class.findAnnotation<DBTable>()?.tableName ?: return emptyList()
 
         val keys = mutableListOf<String>()
         val values = MutableList(objs.size) {
@@ -74,13 +77,15 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
             if (ids.size <= i) return@forEachIndexed
             idProperty?.set(it, ids[i])
         }
+
+        return ids
     }
 
     fun <T : Any> deleteFromClass(c: T) {
         val tableName = c::class.findAnnotation<DBTable>()?.tableName ?: return
         val id = c::class.getPropertyWithAnnotation<Primary>(c) ?: return
 
-        delete(tableName, "_id = ${parseValue(id)}")
+        delete(tableName, "_id = ${dbData.parseValue(id)}")
     }
 
     fun <T : Any> deleteFromClass(objs: Collection<T>) {
@@ -114,7 +119,7 @@ open class DB(dbName: String, credentialsFileName: String? = null) : DBUtils(dbN
             val fields = c.declaredMemberProperties.associate {
                 val field = if (it.hasAnnotation<Primary>()) "_id" else it.dbFieldName()
 
-                it.name to parseResult(getObject(field))
+                it.name to dbData.parseResult(getObject(field))
             }.toMutableMap()
 
             val constructorFields =
