@@ -1,9 +1,10 @@
 package liklibs.db
 
 import liklibs.db.annotations.DBField
+import liklibs.db.annotations.Primary
+import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KProperty
-import kotlin.reflect.KClass
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
@@ -28,4 +29,8 @@ inline fun <reified A : Annotation> KClass<*>.getPropertyWithAnnotation(obj: Any
 inline fun <reified A : Annotation> KClass<*>.setPropertyWithAnnotation(obj: Any, value: Any?) =
     findPropertyWithAnnotation<A>()?.set(obj, value)
 
-fun KProperty<*>.dbFieldName() = findAnnotation<DBField>()?.name ?: name
+fun KProperty<*>.dbFieldName(): String {
+    if (hasAnnotation<Primary>()) return "_id"
+
+    return findAnnotation<DBField>()?.name ?: name
+}

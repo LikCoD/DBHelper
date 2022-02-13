@@ -18,6 +18,8 @@ dependencies {
     testImplementation(kotlin("test"))
 
     implementation("org.postgresql:postgresql:42.3.1")
+    implementation("org.xerial:sqlite-jdbc:3.36.0.3")
+
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.6.0")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.6.0")
 

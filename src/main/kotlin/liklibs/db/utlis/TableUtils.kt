@@ -1,48 +1,54 @@
 package liklibs.db.utlis
 
 import com.squareup.moshi.Moshi
-import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import liklibs.db.*
-import liklibs.db.annotations.*
+import liklibs.db.annotations.DBInfo
+import liklibs.db.annotations.DBTable
+import liklibs.db.annotations.Primary
 import okio.EOFException
 import java.io.File
 import kotlin.reflect.KClass
+import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.findAnnotation
 
 class TableUtils<T : Any>(
     private val c: KClass<T>,
     private val dbInfo: DBInfo = c.java.declaringClass.kotlin.findAnnotation() ?: throw IllegalArgumentException(),
     var offlineStoragePath: String = dbInfo.offlineStoragePath,
-) : DB(dbInfo.dbName, dbInfo.credentialsFilePath) {
-
-    @OptIn(ExperimentalStdlibApi::class)
-    private val jsonAdapter = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
-        .adapter<List<T>>(Types.newParameterizedType(List::class.java, c.java))
+) {
+    val onlineDB = dbs.getOrPut("PostgresData") { DB(dbInfo.dbName, PostgresData, dbInfo.credentialsFilePath) }
+    val offlineDB = dbs.getOrPut("SQLiteData") { DB("${dbInfo.dbName}.sqlite", SQLiteData, null) }
 
     private val infoAdapter = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
         .adapter(TableInfo::class.java)
 
     private var info: TableInfo = TableInfo()
 
-    private fun getLocalId(): Int = info.index++.apply { saveInfo() }
-
     fun sync(): List<T> {
-        val oldList = fromJSON()
-        if (!isAvailable) {
-            info.index = if (oldList.isEmpty()) 1
-            else oldList.maxOf { it::class.getPropertyWithAnnotation<Primary>(it) as Int }
-            return oldList
-        }
-
         val tableName = c.findAnnotation<DBTable>()?.tableName ?: return emptyList()
+
+        offlineDB.execute("PRAGMA foreign_keys = TRUE")
+
+        val createQuery = File("db\\$tableName.query").readText()
+        offlineDB.execute("CREATE TABLE IF NOT EXISTS $tableName ($createQuery);")
+
+        val oldList = offlineDB.selectToClass(c).filterNotNull().toMutableList()
+        if (!onlineDB.isAvailable) return oldList
+
         if (info.deleteIds.isNotEmpty())
-            execute("DELETE FROM $tableName WHERE _id IN (${info.deleteIds.joinToString()})")
+            onlineDB.execute("DELETE FROM $tableName WHERE _id IN (${info.deleteIds.joinToString()})")
 
         info.insertsIds.forEach { id ->
             val element = oldList.find { it::class.getPropertyWithAnnotation<Primary>(it) == id } ?: return@forEach
 
-            insertFromClass(element)
+            onlineDB.insertFromClass(element)
+
+            val newId = element::class.getPropertyWithAnnotation<Primary>(element)
+
+            offlineDB.executeUpdate("UPDATE $tableName SET _id = $newId WHERE _id = $id")
+
+            oldList.remove(element)
         }
 
         info.insertsIds.clear()
@@ -50,55 +56,49 @@ class TableUtils<T : Any>(
 
         saveInfo()
 
-        insertFromClass(oldList, true)
+        onlineDB.insertFromClass(oldList, true)
 
         if (!info.wasOffline) return oldList
 
-        val syncedList = selectToClass(c).filterNotNull()
-        toJSON(syncedList)
+        val syncedList = onlineDB.selectToClass(c).filterNotNull()
+        offlineDB.insertFromClass(syncedList, true)
 
         return syncedList
     }
 
-    fun insert(list: List<T>, obj: T) {
-        if (!isAvailable) {
-            val id = getLocalId()
-            obj::class.setPropertyWithAnnotation<Primary>(obj, id)
+    fun insert(obj: T) {
+        val id = offlineDB.insertFromClass(obj) ?: -1
 
+        if (!onlineDB.isAvailable) {
             info.insertsIds.add(id)
             saveInfo()
-        } else insertFromClass(obj)
-
-        toJSON(list)
+        } else onlineDB.insertFromClass(obj)
     }
 
-    fun insert(list: List<T>, objs: Collection<T>) {
-        if (!isAvailable) {
-            val ids = objs.map { t ->
-                getLocalId().apply { t::class.setPropertyWithAnnotation<Primary>(t, this) }
-            }
+    fun insert(objs: Collection<T>) {
+        val ids = offlineDB.insertFromClass(objs).filterNotNull()
 
+        if (!onlineDB.isAvailable) {
             info.insertsIds.addAll(ids)
             saveInfo()
-        } else insertFromClass(objs)
+        } else onlineDB.insertFromClass(objs)
 
-        toJSON(list)
     }
 
-    fun delete(list: List<T>, obj: T) {
-        if (!isAvailable) {
+    fun delete(obj: T) {
+        if (!onlineDB.isAvailable) {
             val id = obj::class.getPropertyWithAnnotation<Primary>(obj) as Int
 
             if (!info.insertsIds.remove(id)) info.deleteIds.add(id)
 
             saveInfo()
-        } else deleteFromClass(obj)
+        } else onlineDB.deleteFromClass(obj)
 
-        toJSON(list)
+        offlineDB.deleteFromClass(obj)
     }
 
-    fun delete(list: List<T>, objs: Collection<T>) {
-        if (!isAvailable) {
+    fun delete(objs: Collection<T>) {
+        if (!onlineDB.isAvailable) {
             objs.forEach { obj ->
                 val id = obj::class.getPropertyWithAnnotation<Primary>(obj) as Int
 
@@ -106,9 +106,9 @@ class TableUtils<T : Any>(
             }
 
             saveInfo()
-        } else deleteFromClass(objs)
+        } else onlineDB.deleteFromClass(objs)
 
-        toJSON(list)
+        offlineDB.deleteFromClass(objs)
     }
 
     private fun getFile(postfix: String = ""): File {
@@ -116,21 +116,6 @@ class TableUtils<T : Any>(
         File(path.substringBeforeLast("\\")).mkdirs()
 
         return File(path).apply { if (!exists()) createNewFile() }
-    }
-
-
-    internal fun fromJSON(postfix: String = ""): List<T> = try {
-        jsonAdapter.fromJson(getFile(postfix).readText())!!
-    } catch (ex: Exception) {
-        if (ex !is EOFException) ex.printStackTrace()
-
-        emptyList()
-    }
-
-    internal fun toJSON(obj: List<T>, postfix: String = "") = try {
-        getFile(postfix).writeText(jsonAdapter.toJson(obj))
-    } catch (ex: Exception) {
-        ex.printStackTrace()
     }
 
     private fun loadInfo() {
