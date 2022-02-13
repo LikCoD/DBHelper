@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.LikCoD:DBHelper:v0.2")
+    implementation("com.github.LikCoD:DBHelper:v0.4")
 }
 ```
 
@@ -25,15 +25,15 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.LikCoD:DBHelper:0.1.6'
+    implementation 'com.github.LikCoD:DBHelper:0.4'
 }
 ```
 
 ****
 
-This library provide some tools that help us to communicate with postgreSQL
+This library provide some tools that help us to communicate with postgreSQL server and sqlite client
 
-Also, there is a sqList that sync with db or if user doesn't have internet connection save files locally
+Also, there is a sqList that sync with db or if user doesn't have internet connection files will save to sqlite db
 
 To use date, time, timestamp - use this classes
 
@@ -44,9 +44,38 @@ liklibs.db.Timestamp() // For timestamps
 ```
 ****
 
-#### **Do not edit property with @Primary annotation**
+Also create .query file in db folder that provide sqlite creation table
+
+path to file projectDir(or executable file dir)/db/table_name.query
+
+```sql
+_id   integer primary key,
+value varchar,
+anotherid integer,
+
+FOREIGN KEY (anotherid) REFERENCES db_table (_id) ON UPDATE CASCADE
+FOREIGN KEY (value) REFERENCES db_table (anothervalue) ON UPDATE CASCADE
+```
 
 ****
+
+#### **Do not edit property with @Primary annotation**
+#### **Call create list function in order of dependencies**
+
+****
+
+Another way to access created sqList:
+```kotlin
+lists["TableName"]
+```
+
+or created db:
+```kotlin
+dbs["dbType (PostgreSQL or SQLite)"]
+```
+
+****
+
 Examples:
 
 **1. Create simple data class**
@@ -96,11 +125,7 @@ In this case there is sealed class with classes inside:
 - `@DBField` - use this annotation when name of property and field are different
 - `@Primary` - use for id field
 - `@DBTable` - table name, and query to set (if you want to use default query don't use this annotation field)
-- `dbDependency` - use this delegate to show dependency one field from another, how does it work? So 
-- - We have two lists 
-- - list1 - list of Table1 class
-- - list2 - list of Table2 class
-- - When do `list1[0].prop2 = 1` all properties of Table2 class with name prop will be changed to prop2 value (`1` in this case)
+- `dbDependency` - use this delegate to show dependency one field from another
 
 ****
 
@@ -146,31 +171,11 @@ list.removeAt(1)
 
 ****
 
-You can change offline storage path just add `offlineStoragePath` property
-
-```kotlin
-@DBInfo(
-  dbName = "dbName",
-  offlineStoragePath = "db\\" 
-  // to add prefix to db you can use
-  // offlineStoragePath = "db\\prefix" 
-)
-sealed class DB {
-    /*...*/
-}
-```
-
-To change it in runtime you can use
-
-```kotlin
-list.utils.offlineStoragePath = "..."
-```
-
-****
 
 If you want to execute query you can use functions builtin sqList
 
 ```kotlin
-val executeResult1 = list.utils.executeQuery("") //Returns ResultSet?
-val executeResult2 = list.utils.execute("") //Returns Boolean
+val executeResult1 = list.utils.(offline/online).executeUpdate("") //Returns Int
+val executeResult1 = list.utils.(offline/online).executeQuery("") //Returns ResultSet?
+val executeResult2 = list.utils.(offline/online).execute("") //Returns Boolean
 ```
