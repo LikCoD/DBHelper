@@ -50,7 +50,7 @@ object SQLiteData : DBData {
 
     override fun <T> parseResult(value: T): Any? = when {
         value == null -> null
-        value is String && value.length > 2 && value.first() == '{' && value.last() == '}' -> fromJson(value)
+        value is String && value.length > 2 && value.first() == '[' && value.last() == ']' -> fromJson(value)
         value is java.sql.Timestamp -> value.toSQL()
         value is java.sql.Date -> value.toSQL()
         value is java.sql.Time -> value.toSQL()
