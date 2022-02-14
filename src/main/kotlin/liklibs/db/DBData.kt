@@ -1,10 +1,8 @@
 package liklibs.db
 
-import java.sql.Date
-import java.sql.Time
-import java.sql.Timestamp
+import com.google.gson.Gson
 
-interface DBData{
+interface DBData {
     val detectInjectionRegex: Regex
         get() = Regex("['`]")
 
@@ -15,7 +13,7 @@ interface DBData{
     fun <T> parseResult(value: T): Any?
 }
 
-object PostgresData: DBData{
+object PostgresData : DBData {
     override val jdbcName = "postgresql"
     override val userRequire = true
 
@@ -30,20 +28,20 @@ object PostgresData: DBData{
 
     override fun <T> parseResult(value: T): Any? = when (value) {
         null -> value
-        is Timestamp -> value.toSQL()
-        is Date -> value.toSQL()
-        is Time -> value.toSQL()
+        is java.sql.Timestamp -> value.toSQL()
+        is java.sql.Date -> value.toSQL()
+        is java.sql.Time -> value.toSQL()
         else -> value
     }
 }
 
-object SQLiteData: DBData{
+object SQLiteData : DBData {
     override val jdbcName = "sqlite"
     override val userRequire = false
 
     override fun <T> parseValue(value: T): String = when (value) {
         is String -> "'${value.replace(detectInjectionRegex, "")}'"
-        is Iterable<*> -> TODO()
+        is Iterable<*> -> toJson(value)
         is Timestamp -> "TIMESTAMP '$value'"
         is Date -> "DATE '$value'"
         is Time -> "TIME '$value'"
@@ -52,14 +50,20 @@ object SQLiteData: DBData{
 
     override fun <T> parseResult(value: T): Any? = when {
         value == null -> null
-        value is String && value.length > 2 && value.first() == '{' && value.last() == '}' -> parseJson(value)
-        value is Timestamp -> value.toSQL()
-        value is Date -> value.toSQL()
-        value is Time -> value.toSQL()
+        value is String && value.length > 2 && value.first() == '{' && value.last() == '}' -> fromJson(value)
+        value is java.sql.Timestamp -> value.toSQL()
+        value is java.sql.Date -> value.toSQL()
+        value is java.sql.Time -> value.toSQL()
         else -> value
     }
 
-    private fun parseJson(str: String){
-        TODO()
+    fun fromJson(str: String): Any = try {
+        Gson().fromJson(str, List::class.java)
+    } catch (ex: Exception) {
+        str
+    }
+
+    fun <T> toJson(value: T): String {
+        return Gson().toJson(value)
     }
 }
