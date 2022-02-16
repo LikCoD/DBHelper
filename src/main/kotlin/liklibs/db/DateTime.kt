@@ -5,30 +5,59 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 
 data class Date(
-    var day: Int = -1,
-    var month: Int = -1,
-    var year: Int = -1,
+        var day: Int = -1,
+        var month: Int = -1,
+        var year: Int = -1,
 ) {
     override fun toString() = "$year-$month-$day"
+
+    fun fromString(str: String) {
+        val (year, month, day) = str.split("-").map { it.toInt() }
+
+        this.year = year
+        this.month = month
+        this.day = day
+    }
 }
 
 data class Time(
-    var hour: Int = -1,
-    var minute: Int = -1,
-    var second: Int = -1,
+        var hour: Int = -1,
+        var minute: Int = -1,
+        var second: Int = -1,
 ) {
     override fun toString() = "$hour:$minute:$second"
+
+    fun fromString(str: String) {
+        val (hour, minute, second) = str.split(":").map { it.toInt() }
+
+        this.hour = hour
+        this.minute = minute
+        this.second = second
+    }
 }
 
 data class Timestamp(
-    var day: Int = -1,
-    var month: Int = -1,
-    var year: Int = -1,
-    var hour: Int = -1,
-    var minute: Int = -1,
-    var second: Int = -1,
+        var day: Int = -1,
+        var month: Int = -1,
+        var year: Int = -1,
+        var hour: Int = -1,
+        var minute: Int = -1,
+        var second: Int = -1,
 ) {
     override fun toString() = "$year-$month-$day $hour:$minute:$second"
+
+    fun fromString(str: String) {
+        val (year, month, day, hour, minute, second) = str.split("-", " ", ":").map { it.toInt() }
+
+        this.year = year
+        this.month = month
+        this.day = day
+        this.hour = hour
+        this.minute = minute
+        this.second = second
+    }
+
+    private operator fun <E> List<E>.component6(): E = get(5)
 }
 
 
