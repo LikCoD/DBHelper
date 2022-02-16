@@ -17,22 +17,24 @@ open class DB(dbName: String, dbData: DBData, credentialsFileName: String? = nul
         val table = c.findAnnotation<DBTable>() ?: return emptyList()
         val query = if (table.selectQuery == "") "SELECT * FROM ${table.tableName}" else table.selectQuery
 
-        return executeQuery(query)?.parseToArray(c) ?: return emptyList()
+        return executeQuery(query)?.parseToArray(c, dbData) ?: return emptyList()
     }
 
-    fun <T : Any> insertFromClass(c: T): Int? {
+    fun <T : Any> insertFromClass(c: T, parseId: Boolean = false): Int? {
         val tableName = c::class.findAnnotation<DBTable>()?.tableName ?: return null
 
         var idProperty: KProperty1<*, *>? = null
 
         val fields = c::class.members().mapNotNull {
+            var fieldName = it.findAnnotation<DBField>()?.name ?: it.name
+
             if (it.hasAnnotation<Primary>()) {
                 idProperty = it
-                return@mapNotNull null
+                if (!parseId) return@mapNotNull null
+                fieldName = "_id"
             }
-            if (it.hasAnnotation<NotInsertable>()) return@mapNotNull null
 
-            val fieldName = it.findAnnotation<DBField>()?.name ?: it.name
+            if (it.hasAnnotation<NotInsertable>()) return@mapNotNull null
 
             fieldName to it.get(c)
         }.toMap()
@@ -104,46 +106,48 @@ open class DB(dbName: String, dbData: DBData, credentialsFileName: String? = nul
         delete(tableName, "_id IN ${ids.joinToString(prefix = "(", postfix = ")")}")
     }
 
-    fun <T : Any> ResultSet.parseToArray(c: KClass<T>): List<T?> {
-        val list = mutableListOf<T?>()
-
-        while (next()) list.add(parseToClass(c))
-
-        return list
-    }
-
-    fun <T : Any> ResultSet.parseToClass(c: KClass<T>): T? {
-        try {
-            val constructor = c.primaryConstructor ?: return null
-
-            val fields = c.declaredMemberProperties.associate {
-                val field = if (it.hasAnnotation<Primary>()) "_id" else it.dbFieldName()
-
-                it.name to dbData.parseResult(getObject(field))
-            }.toMutableMap()
-
-            val constructorFields =
-                constructor.parameters.associateWith { fields[it.name].also { _ -> fields.remove(it.name) } }
-
-            val obj = constructor.callBy(constructorFields)
-
-            c.declaredMemberProperties.forEach {
-                if (fields[it.name] == null) return@forEach
-
-                it.set(obj, fields[it.name])
-            }
-
-            return obj
-        } catch (ex: Exception) {
-            println(ex.message)
-        }
-
-        return null
-    }
-
     inline fun <reified T : Any> selectToClass(): List<T?> = selectToClass(T::class)
 
-    inline fun <reified T : Any> ResultSet.parseToArray(): List<T?> = parseToArray(T::class)
+    companion object {
+        fun <T : Any> ResultSet.parseToArray(c: KClass<T>, dbData: DBData): List<T?> {
+            val list = mutableListOf<T?>()
 
-    inline fun <reified T : Any> ResultSet.parseToClass(): T? = parseToClass(T::class)
+            while (next()) list.add(parseToClass(c, dbData))
+
+            return list
+        }
+
+        fun <T : Any> ResultSet.parseToClass(c: KClass<T>, dbData: DBData): T? {
+            try {
+                val constructor = c.primaryConstructor ?: return null
+
+                val fields = c.declaredMemberProperties.associate {
+                    val field = if (it.hasAnnotation<Primary>()) "_id" else it.dbFieldName()
+
+                    it.name to dbData.parseResult(getObject(field))
+                }.toMutableMap()
+
+                val constructorFields =
+                    constructor.parameters.associateWith { fields[it.name].also { _ -> fields.remove(it.name) } }
+
+                val obj = constructor.callBy(constructorFields)
+
+                c.declaredMemberProperties.forEach {
+                    if (fields[it.name] == null) return@forEach
+
+                    it.set(obj, fields[it.name])
+                }
+
+                return obj
+            } catch (ex: Exception) {
+                println(ex.message)
+            }
+
+            return null
+        }
+
+        inline fun <reified T : Any> ResultSet.parseToArray(dbData: DBData): List<T?> = parseToArray(T::class, dbData)
+
+        inline fun <reified T : Any> ResultSet.parseToClass(dbData: DBData): T? = parseToClass(T::class, dbData)
+    }
 }
