@@ -60,9 +60,9 @@ object SQLiteData : DBData {
         value is String && value.length >= 2 && value.first() == '[' && value.last() == ']' -> fromJson(value)
         value is String && value == trueString -> true
         value is String && value == falseString -> false
-        value is String && value.startsWith("__ts") -> Timestamp().fromString(value.drop(6).dropLast(2))
-        value is String && value.startsWith("__d") -> Date().fromString(value.drop(5).dropLast(2))
-        value is String && value.startsWith("__t") -> Time().fromString(value.drop(5).dropLast(2))
+        value is String && value.startsWith("__ts") -> Timestamp.fromString(value.drop(6).dropLast(2))
+        value is String && value.startsWith("__d") -> Date.fromString(value.drop(5).dropLast(2))
+        value is String && value.startsWith("__t") -> Time.fromString(value.drop(5).dropLast(2))
         value is java.sql.Timestamp -> value.toSQL()
         value is java.sql.Date -> value.toSQL()
         value is java.sql.Time -> value.toSQL()
@@ -70,7 +70,7 @@ object SQLiteData : DBData {
     }
 
     private fun fromJson(str: String): Any = try {
-        if (str.length == 2) emptyList<Int>()
+        if (str.length == 2) mutableListOf<Any>()
         else Gson().fromJson(str, List::class.java)
     } catch (ex: Exception) {
         str

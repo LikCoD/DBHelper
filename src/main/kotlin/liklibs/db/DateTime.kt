@@ -11,12 +11,12 @@ data class Date(
 ) {
     override fun toString() = "$year-$month-$day"
 
-    fun fromString(str: String) {
-        val (year, month, day) = str.split("-").map { it.toInt() }
+    companion object {
+        fun fromString(str: String): Date {
+            val (year, month, day) = str.split("-").map { it.toInt() }
 
-        this.year = year
-        this.month = month
-        this.day = day
+            return Date(day, month, year)
+        }
     }
 }
 
@@ -27,12 +27,12 @@ data class Time(
 ) {
     override fun toString() = "$hour:$minute:$second"
 
-    fun fromString(str: String) {
-        val (hour, minute, second) = str.split(":").map { it.toInt() }
+    companion object {
+        fun fromString(str: String): Time {
+            val (hour, minute, second) = str.split(":").map { it.toInt() }
 
-        this.hour = hour
-        this.minute = minute
-        this.second = second
+            return Time(hour, minute, second)
+        }
     }
 }
 
@@ -46,18 +46,15 @@ data class Timestamp(
 ) {
     override fun toString() = "$year-$month-$day $hour:$minute:$second"
 
-    fun fromString(str: String) {
-        val (year, month, day, hour, minute, second) = str.split("-", " ", ":").map { it.toInt() }
+    companion object {
+        fun fromString(str: String): Timestamp {
+            val (year, month, day, hour, minute, second) = str.split("-", " ", ":").map { it.toInt() }
 
-        this.year = year
-        this.month = month
-        this.day = day
-        this.hour = hour
-        this.minute = minute
-        this.second = second
+            return Timestamp(day, month, year, hour, minute, second)
+        }
+
+        private operator fun <E> List<E>.component6(): E = get(5)
     }
-
-    private operator fun <E> List<E>.component6(): E = get(5)
 }
 
 

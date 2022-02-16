@@ -89,7 +89,7 @@ abstract class DBUtils(private val dbName: String, val dbData: DBData, credentia
     }
 
     fun <T> insert(table: String, keys: List<String>, vararg valuesList: List<T>): List<Int?> {
-        executeQuery(insertQuery(table, keys, *valuesList)) ?: return emptyList()
+        executeUpdate(insertQuery(table, keys, *valuesList)) ?: return emptyList()
 
         val result = statement.executeQuery("SELECT _id FROM $table ORDER BY _id DESC LIMIT ${valuesList.size}")
 

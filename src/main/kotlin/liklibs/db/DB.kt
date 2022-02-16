@@ -119,6 +119,8 @@ open class DB(dbName: String, dbData: DBData, credentialsFileName: String? = nul
 
         fun <T : Any> ResultSet.parseToClass(c: KClass<T>, dbData: DBData): T? {
             try {
+                if (isClosed) return null
+
                 val constructor = c.primaryConstructor ?: return null
 
                 val fields = c.declaredMemberProperties.associate {
