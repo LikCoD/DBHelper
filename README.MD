@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.LikCoD:DBHelper:v0.4")
+    implementation("com.github.LikCoD:DBHelper:v0.5")
 }
 ```
 
@@ -25,7 +25,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.LikCoD:DBHelper:0.4'
+    implementation 'com.github.LikCoD:DBHelper:v0.5'
 }
 ```
 
@@ -44,10 +44,10 @@ liklibs.db.Timestamp() // For timestamps
 ```
 ****
 
-Also create .query file in db folder that provide sqlite creation table
+This library will create table create query for sqlite db
+but if you want to provide the create query manually you can create file
 
-path to file projectDir(or executable file dir)/db/table_name.query
-
+(example)
 ```sql
 _id   integer primary key,
 value varchar,
@@ -57,10 +57,14 @@ FOREIGN KEY (anotherid) REFERENCES db_table (_id) ON UPDATE CASCADE
 FOREIGN KEY (value) REFERENCES db_table (anothervalue) ON UPDATE CASCADE
 ```
 
+and put `@CreateQuery("pathToFile")` annotation on your table class 
+
+if you want to show auto-query generator `FOREIGN KEY` use `@Dependency("tableName", "fieldName")` annotation
+
 ****
 
 #### **Do not edit property with @Primary annotation**
-#### **Call create list function in order of dependencies**
+#### **Call create list function in order of sql dependencies**
 
 ****
 
