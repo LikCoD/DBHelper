@@ -36,11 +36,10 @@ class TableUtils<T : Any>(
     fun sync(): List<T> {
         val tableName = c.findAnnotation<DBTable>()?.tableName ?: return emptyList()
 
-
         val createQuery = TableQuery.createSQLite(c)
         offlineDB.execute("CREATE TABLE IF NOT EXISTS $tableName ($createQuery);")
 
-        println(createQuery)
+        println("[INFO] Create $tableName query - $createQuery")
 
         val oldList = offlineDB.selectToClass(c).filterNotNull().toMutableList()
         if (!onlineDB.isAvailable) return oldList
