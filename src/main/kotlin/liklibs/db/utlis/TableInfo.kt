@@ -1,7 +1,13 @@
 package liklibs.db.utlis
 
+import liklibs.db.annotations.DBTable
+import liklibs.db.annotations.Primary
+
+@DBTable("tablesinfo")
 data class TableInfo(
-    val insertsIds: MutableList<Int> = mutableListOf(),
+    val tableName: String,
+    val insertIds: MutableList<Int> = mutableListOf(),
     val deleteIds: MutableList<Int> = mutableListOf(),
-    var wasOffline: Boolean = true
+    val wasOffline: Boolean = false,
+    @Primary val id: Int = -1   
 )
