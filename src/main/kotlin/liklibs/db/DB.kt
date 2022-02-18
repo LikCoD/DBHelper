@@ -15,7 +15,8 @@ open class DB(dbName: String, dbData: DBData, credentialsFileName: String? = nul
 
     fun <T : Any> selectToClass(c: KClass<T>, selectQuery: String?): List<T?> {
         val table = c.findAnnotation<DBTable>() ?: return emptyList()
-        val query = selectQuery ?: (if (table.selectQuery == "") "SELECT * FROM ${table.tableName}" else table.selectQuery)
+        val query = selectQuery
+            ?: (if (table.selectQuery == "") "SELECT * FROM ${table.tableName} ORDER BY _id" else table.selectQuery)
 
         return executeQuery(query)?.parseToArray(c, dbData) ?: return emptyList()
     }

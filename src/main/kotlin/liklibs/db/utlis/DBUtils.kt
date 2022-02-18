@@ -75,8 +75,9 @@ abstract class DBUtils(private val dbName: String, val dbData: DBData, credentia
         return "UPDATE $table $fieldsQuery WHERE _id = $id"
     }
 
+    @Language("SQL")
     fun selectQuery(table: String, fields: String = "*", filter: String? = null) =
-        "SELECT $fields FROM $table ${if (filter != null) "WHERE $filter" else ""}"
+        "SELECT $fields FROM $table ${if (filter != null) "WHERE $filter" else ""} ORDER BY _id"
 
     fun <T> insert(table: String, map: Map<String, T>): Int? {
         executeUpdate(insertQuery(table, map))
