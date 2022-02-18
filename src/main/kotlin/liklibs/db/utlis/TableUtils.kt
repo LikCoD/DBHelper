@@ -74,7 +74,7 @@ class TableUtils<T : Any>(
     }
 
     fun insert(obj: T) {
-        if (!onlineDB.isAvailable) {
+        if (onlineDB.isAvailable) {
             onlineDB.insertFromClass(obj)
             offlineDB.insertFromClass(obj, true)
         }else {
@@ -86,7 +86,7 @@ class TableUtils<T : Any>(
     }
 
     fun insert(objs: Collection<T>) {
-        if (!onlineDB.isAvailable) {
+        if (onlineDB.isAvailable) {
             onlineDB.insertFromClass(objs)
             offlineDB.insertFromClass(objs, true)
         }else {
