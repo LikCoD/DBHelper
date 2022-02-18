@@ -5,7 +5,6 @@ import liklibs.db.DB.Companion.parseToClass
 import liklibs.db.annotations.DBInfo
 import liklibs.db.annotations.DBTable
 import liklibs.db.annotations.Primary
-import java.io.File
 import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation
 
@@ -75,22 +74,27 @@ class TableUtils<T : Any>(
     }
 
     fun insert(obj: T) {
-        val id = offlineDB.insertFromClass(obj) ?: -1
-
         if (!onlineDB.isAvailable) {
+            onlineDB.insertFromClass(obj)
+            offlineDB.insertFromClass(obj, true)
+        }else {
+            val id = offlineDB.insertFromClass(obj) ?: -1
+
             info.insertIds.add(id)
             saveInfo()
-        } else onlineDB.insertFromClass(obj)
+        }
     }
 
     fun insert(objs: Collection<T>) {
-        val ids = offlineDB.insertFromClass(objs).filterNotNull()
-
         if (!onlineDB.isAvailable) {
+            onlineDB.insertFromClass(objs)
+            offlineDB.insertFromClass(objs, true)
+        }else {
+            val ids = offlineDB.insertFromClass(objs).filterNotNull()
+
             info.insertIds.addAll(ids)
             saveInfo()
-        } else onlineDB.insertFromClass(objs)
-
+        }
     }
 
     fun delete(obj: T) {
