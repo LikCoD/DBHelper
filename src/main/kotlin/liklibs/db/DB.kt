@@ -13,9 +13,9 @@ import kotlin.reflect.full.primaryConstructor
 open class DB(dbName: String, dbData: DBData, credentialsFileName: String? = null) :
     DBUtils(dbName, dbData, credentialsFileName) {
 
-    fun <T : Any> selectToClass(c: KClass<T>): List<T?> {
+    fun <T : Any> selectToClass(c: KClass<T>, selectQuery: String?): List<T?> {
         val table = c.findAnnotation<DBTable>() ?: return emptyList()
-        val query = if (table.selectQuery == "") "SELECT * FROM ${table.tableName}" else table.selectQuery
+        val query = selectQuery ?: (if (table.selectQuery == "") "SELECT * FROM ${table.tableName}" else table.selectQuery)
 
         return executeQuery(query)?.parseToArray(c, dbData) ?: return emptyList()
     }
@@ -106,7 +106,7 @@ open class DB(dbName: String, dbData: DBData, credentialsFileName: String? = nul
         delete(tableName, "_id IN ${ids.joinToString(prefix = "(", postfix = ")")}")
     }
 
-    inline fun <reified T : Any> selectToClass(): List<T?> = selectToClass(T::class)
+    inline fun <reified T : Any> selectToClass(selectQuery: String): List<T?> = selectToClass(T::class, selectQuery)
 
     companion object {
         fun <T : Any> ResultSet.parseToArray(c: KClass<T>, dbData: DBData): List<T?> {

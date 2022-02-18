@@ -10,8 +10,8 @@ import kotlin.reflect.full.findAnnotation
 
 class TableUtils<T : Any>(
     private val c: KClass<T>,
+    var selectQuery: String?,
     private val dbInfo: DBInfo = c.java.declaringClass.kotlin.findAnnotation() ?: throw IllegalArgumentException(),
-    var offlineStoragePath: String = dbInfo.offlineStoragePath,
     onlineDBData: DBData = PostgresData,
     offlineDBData: DBData = SQLiteData,
 ) {
@@ -40,7 +40,7 @@ class TableUtils<T : Any>(
 
         println("[INFO] Create $tableName query - $createQuery")
 
-        val oldList = offlineDB.selectToClass(c).filterNotNull().toMutableList()
+        val oldList = offlineDB.selectToClass(c, selectQuery).filterNotNull().toMutableList()
         if (!onlineDB.isAvailable) return oldList
 
         if (info.deleteIds.isNotEmpty())
@@ -67,7 +67,7 @@ class TableUtils<T : Any>(
 
         //if (!info.wasOffline) return oldList
 
-        val syncedList = onlineDB.selectToClass(c).filterNotNull()
+        val syncedList = onlineDB.selectToClass(c, selectQuery).filterNotNull()
         offlineDB.insertFromClass(syncedList, true)
 
         return syncedList
