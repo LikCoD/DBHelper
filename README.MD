@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.LikCoD:DBHelper:v0.5")
+    implementation("com.github.LikCoD:DBHelper:v0.5.3")
 }
 ```
 
@@ -25,7 +25,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.LikCoD:DBHelper:v0.5'
+    implementation 'com.github.LikCoD:DBHelper:v0.5.3'
 }
 ```
 
@@ -128,7 +128,8 @@ In this case there is sealed class with classes inside:
 - `@NotInsertable` - ignore this property
 - `@DBField` - use this annotation when name of property and field are different
 - `@Primary` - use for id field
-- `@DBTable` - table name, and query to set (if you want to use default query don't use this annotation field)
+- `@DBTable` - table name, and query to set (if you want to use default query don't use this annotation field), 
+if you want to specify query from code use `sqList("Select query")` function, to change it use `list.utils.selectQuery`  
 - `dbDependency` - use this delegate to show dependency one field from another
 
 ****

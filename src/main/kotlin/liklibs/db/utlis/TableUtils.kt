@@ -5,14 +5,13 @@ import liklibs.db.DB.Companion.parseToClass
 import liklibs.db.annotations.DBInfo
 import liklibs.db.annotations.DBTable
 import liklibs.db.annotations.Primary
-import java.io.File
 import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation
 
 class TableUtils<T : Any>(
     private val c: KClass<T>,
+    var selectQuery: String?,
     private val dbInfo: DBInfo = c.java.declaringClass.kotlin.findAnnotation() ?: throw IllegalArgumentException(),
-    var offlineStoragePath: String = dbInfo.offlineStoragePath,
     onlineDBData: DBData = PostgresData,
     offlineDBData: DBData = SQLiteData,
 ) {
@@ -41,7 +40,7 @@ class TableUtils<T : Any>(
 
         println("[INFO] Create $tableName query - $createQuery")
 
-        val oldList = offlineDB.selectToClass(c).filterNotNull().toMutableList()
+        val oldList = offlineDB.selectToClass(c, selectQuery).filterNotNull().toMutableList()
         if (!onlineDB.isAvailable) return oldList
 
         if (info.deleteIds.isNotEmpty())
@@ -68,29 +67,34 @@ class TableUtils<T : Any>(
 
         //if (!info.wasOffline) return oldList
 
-        val syncedList = onlineDB.selectToClass(c).filterNotNull()
+        val syncedList = onlineDB.selectToClass(c, selectQuery).filterNotNull()
         offlineDB.insertFromClass(syncedList, true)
 
         return syncedList
     }
 
     fun insert(obj: T) {
-        val id = offlineDB.insertFromClass(obj) ?: -1
+        if (onlineDB.isAvailable) {
+            onlineDB.insertFromClass(obj)
+            offlineDB.insertFromClass(obj, true)
+        }else {
+            val id = offlineDB.insertFromClass(obj) ?: -1
 
-        if (!onlineDB.isAvailable) {
             info.insertIds.add(id)
             saveInfo()
-        } else onlineDB.insertFromClass(obj)
+        }
     }
 
     fun insert(objs: Collection<T>) {
-        val ids = offlineDB.insertFromClass(objs).filterNotNull()
+        if (onlineDB.isAvailable) {
+            onlineDB.insertFromClass(objs)
+            offlineDB.insertFromClass(objs, true)
+        }else {
+            val ids = offlineDB.insertFromClass(objs).filterNotNull()
 
-        if (!onlineDB.isAvailable) {
             info.insertIds.addAll(ids)
             saveInfo()
-        } else onlineDB.insertFromClass(objs)
-
+        }
     }
 
     fun delete(obj: T) {

@@ -5,14 +5,15 @@ import kotlin.reflect.KClass
 
 class SQList<E : Any>(
     private val kClass: KClass<E>,
-    private val list: MutableList<E> = mutableListOf(),
+    selectQuery: String? = null,
+    private val list: MutableList<E> = mutableListOf()
 ) : MutableList<E> by list {
     val utils: TableUtils<E>
 
     init {
         lists[kClass.simpleName.toString()] = this
 
-        utils = TableUtils(kClass)
+        utils = TableUtils(kClass, selectQuery)
 
         list.addAll(utils.sync())
     }
@@ -63,8 +64,8 @@ class SQList<E : Any>(
 
     fun update(){
         list.clear()
-        list.addAll(utils.offlineDB.selectToClass(kClass).filterNotNull().toMutableList())
+        list.addAll(utils.offlineDB.selectToClass(kClass, utils.selectQuery).filterNotNull().toMutableList())
     }
 }
 
-inline fun <reified T : Any> sqList() = SQList(T::class)
+inline fun <reified T : Any> sqList(selectQuery: String? = null) = SQList(T::class, selectQuery)
