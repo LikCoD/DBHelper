@@ -8,17 +8,5 @@
       <jdbc-url>jdbc:postgresql://ec2-52-45-83-163.compute-1.amazonaws.com:5432/defriuiuqmjmcl</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <data-source source="LOCAL" name="defriuiuqmjmcl" uuid="9a328d0d-71ac-400f-b3fe-8f12524fab0f">
-      <driver-ref>sqlite.xerial</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:P:\Kotlin\SQLTest\db\defriuiuqmjmcl.sqlite</jdbc-url>
-      <working-dir>$ProjectFileDir$</working-dir>
-      <libraries>
-        <library>
-          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.34.0/sqlite-jdbc-3.34.0.jar</url>
-        </library>
-      </libraries>
-    </data-source>
   </component>
 </project>

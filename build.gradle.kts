@@ -17,15 +17,18 @@ repositories {
 dependencies {
     testImplementation(kotlin("test"))
 
-    implementation("org.postgresql:postgresql:42.3.1")
+    implementation("org.postgresql:postgresql:42.3.2")
     implementation("org.xerial:sqlite-jdbc:3.36.0.3")
+
+    implementation("org.jsoup:jsoup:1.14.3")
 
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.6.0")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.6.0")
 
-    implementation("com.google.code.gson:gson:2.8.9")
+    implementation("com.google.code.gson:gson:2.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
     implementation("com.squareup.moshi:moshi-kotlin:1.13.0")
+    implementation("com.beust:klaxon:5.5")
 
     implementation(kotlin("reflect"))
 }
