@@ -11,18 +11,14 @@ import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 
 open class DBProperty<V>(var value: V) : ReadWriteProperty<Any?, V> {
-    private var isInitialized: Boolean = false
 
     override fun getValue(thisRef: Any?, property: KProperty<*>): V = value
 
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: V) {
         thisRef ?: throw IllegalArgumentException("Not in class")
 
+        if (this.value == value) return
         this.value = value
-        if (!isInitialized){
-            isInitialized = true
-            return
-        }
 
         if (property.hasAnnotation<Primary>()) return
 
