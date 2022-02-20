@@ -7,6 +7,8 @@ import kotlin.reflect.jvm.javaField
 class DBDependency<V>(value: V, private vararg val propertyList: KProperty<*>) : DBProperty<V>(value) {
 
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: V) {
+        if (this.value == value) return
+
         super.setValue(thisRef, property, value)
 
         propertyList.forEach propertiesFor@{ dependencyProperty ->
