@@ -1,6 +1,13 @@
 package liklibs.db
 
+import com.beust.klaxon.Klaxon
 import com.google.gson.Gson
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import org.postgresql.util.PGobject
+import kotlin.reflect.KClass
+import kotlin.reflect.KType
 
 interface DBData {
     val detectInjectionRegex: Regex
@@ -11,7 +18,12 @@ interface DBData {
     val dbName: String
 
     fun <T> parseValue(value: T): String
-    fun <T> parseResult(value: T): Any?
+    fun <T> parseResult(value: T, resultClass: KType? = null): Any?
+
+    fun jsonListParser(resultClass: KType, value: String): List<*>? =
+        Moshi.Builder().add(KotlinJsonAdapterFactory()).build().adapter<List<*>>(Types.newParameterizedType(
+            List::class.java, (resultClass.arguments.first().type!!.classifier as KClass<*>).java)
+        ).fromJson(value)
 }
 
 object PostgresData : DBData {
@@ -20,19 +32,29 @@ object PostgresData : DBData {
     override val dbName = "Postgres"
 
     override fun <T> parseValue(value: T): String = when (value) {
+        null -> "null"
         is String -> "'${value.replace(Regex("['`]"), "")}'"
-        is Iterable<*> -> value.joinToString(prefix = "{", postfix = "}") { parseValue(it) }
+        is Iterable<*> -> value.joinToString(prefix = "'{", postfix = "}'") { parseValue(it) }
         is Timestamp -> "TIMESTAMP '$value'"
         is Date -> "DATE '$value'"
         is Time -> "TIME '$value'"
-        else -> value.toString().replace(Regex("['`]"), "")
+        is Float -> value.toString()
+        is Double -> value.toString()
+        is Int -> value.toString()
+        is Boolean -> value.toString()
+        else -> Klaxon().toJsonString(value).replace(detectInjectionRegex, "")
     }
 
-    override fun <T> parseResult(value: T): Any? = when (value) {
+    override fun <T> parseResult(value: T, resultClass: KType?): Any? = when (value) {
         null -> value
         is java.sql.Timestamp -> value.toSQL()
         is java.sql.Date -> value.toSQL()
         is java.sql.Time -> value.toSQL()
+        is String -> value
+        is PGobject -> {
+            if (value.type != "json" || resultClass == null) null
+            else jsonListParser(resultClass, value.value!!)
+        }
         else -> value
     }
 }
@@ -52,17 +74,21 @@ object SQLiteData : DBData {
         is Timestamp -> "'__ts__${value}__'"
         is Date -> "'__d__${value}__'"
         is Time -> "'__t__${value}__'"
-        else -> value.toString().replace(detectInjectionRegex, "")
+        is Float -> value.toString()
+        is Double -> value.toString()
+        is Int -> value.toString()
+        else -> "'${Klaxon().toJsonString(value).replace(detectInjectionRegex, "")}'"
     }
 
-    override fun <T> parseResult(value: T): Any? = when {
-        value == null -> null
+    override fun <T> parseResult(value: T, resultClass: KType?): Any? = when {
+        value == null || value == "null" -> null
         value is String && value.length >= 2 && value.first() == '[' && value.last() == ']' -> fromJson(value)
         value is String && value == trueString -> true
         value is String && value == falseString -> false
         value is String && value.startsWith("__ts") -> Timestamp.fromString(value.drop(6).dropLast(2))
         value is String && value.startsWith("__d") -> Date.fromString(value.drop(5).dropLast(2))
         value is String && value.startsWith("__t") -> Time.fromString(value.drop(5).dropLast(2))
+        value is String && value.startsWith("{") && value.endsWith("}") -> jsonListParser(resultClass!!, value)
         value is java.sql.Timestamp -> value.toSQL()
         value is java.sql.Date -> value.toSQL()
         value is java.sql.Time -> value.toSQL()

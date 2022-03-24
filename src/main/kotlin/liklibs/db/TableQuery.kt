@@ -31,10 +31,9 @@ object TableQuery {
             with(it.returnType) {
                 when {
                     check<Int>() -> types.add("$filed integer")
-                    check<String>() || check<Date>() || check<Time>() || check<Timestamp>() -> types.add("$filed text")
                     check<Double>() -> types.add("$filed double")
                     check<Float>() -> types.add("$filed float")
-                    else -> return@forEach
+                    else -> types.add("$filed text")
                 }
             }
 
