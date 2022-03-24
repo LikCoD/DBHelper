@@ -34,7 +34,7 @@ object PostgresData : DBData {
     override fun <T> parseValue(value: T): String = when (value) {
         null -> "null"
         is String -> "'${value.replace(Regex("['`]"), "")}'"
-        is Iterable<*> -> value.joinToString(prefix = "'{", postfix = "}'") { parseValue(it) }
+        is Iterable<*> -> value.joinToString(prefix = "{", postfix = "}") { parseValue(it) }
         is Timestamp -> "TIMESTAMP '$value'"
         is Date -> "DATE '$value'"
         is Time -> "TIME '$value'"
