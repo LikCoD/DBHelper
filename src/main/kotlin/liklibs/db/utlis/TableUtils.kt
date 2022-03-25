@@ -15,8 +15,8 @@ class TableUtils<T : Any>(
     onlineDBData: DBData = PostgresData,
     offlineDBData: DBData = SQLiteData,
 ) {
-    val onlineDB = dbs.getOrPut(onlineDBData.dbName) { DB(dbInfo.dbName, onlineDBData, dbInfo.credentialsFilePath) }
-    val offlineDB = dbs.getOrPut(offlineDBData.dbName) {
+    val onlineDB = dbs.getOrPut("${onlineDBData.dbName}_${dbInfo.dbName}") { DB(dbInfo.dbName, onlineDBData, dbInfo.credentialsFilePath) }
+    val offlineDB = dbs.getOrPut("${offlineDBData.dbName}_${dbInfo.dbName}") {
         DB("${dbInfo.dbName}.sqlite", SQLiteData, null).apply {
             execute("PRAGMA foreign_keys = TRUE")
             execute("CREATE TABLE IF NOT EXISTS tablesinfo (_id integer primary key, tablename varchar, insertids text, deleteids text, wasoffline varchar)")
