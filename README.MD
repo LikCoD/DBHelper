@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.LikCoD:DBHelper:v0.6")
+    implementation("com.github.LikCoD:DBHelper:v0.7")
 }
 ```
 
@@ -25,7 +25,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.LikCoD:DBHelper:v0.6'
+    implementation 'com.github.LikCoD:DBHelper:v0.7'
 }
 ```
 
@@ -42,6 +42,13 @@ liklibs.db.Date() // For dates
 liklibs.db.Time() // For times
 liklibs.db.Timestamp() // For timestamps
 ```
+
+****
+
+If your object not in db collection it will be saved as json string (varchar)
+
+(Then it will be parsed into your class automatically)
+
 ****
 
 This library will create table create query for sqlite db
@@ -75,7 +82,7 @@ lists["TableName"]
 
 or created db:
 ```kotlin
-dbs["dbType (PostgreSQL or SQLite)"]
+dbs["PostgreSQL_name"] //dbs[dbType (PostgreSQL or SQLite) + _ dbName]
 ```
 
 ****
