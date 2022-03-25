@@ -15,15 +15,19 @@ class TableUtils<T : Any>(
     onlineDBData: DBData = PostgresData,
     offlineDBData: DBData = SQLiteData,
 ) {
-    val onlineDB = dbs.getOrPut("${onlineDBData.dbName}_${dbInfo.dbName}") { DB(dbInfo.dbName, onlineDBData, dbInfo.credentialsFilePath) }
+    val onlineDB = dbs.getOrPut("${onlineDBData.dbName}_${dbInfo.dbName}") {
+        DB(dbInfo.dbName,
+            onlineDBData,
+            dbInfo.credentialsFilePath)
+    }
     val offlineDB = dbs.getOrPut("${offlineDBData.dbName}_${dbInfo.dbName}") {
         DB("${dbInfo.dbName}.sqlite", SQLiteData, null).apply {
             execute("PRAGMA foreign_keys = TRUE")
-            execute("CREATE TABLE IF NOT EXISTS tablesinfo (_id integer primary key, tablename varchar, insertids text, deleteids text, wasoffline varchar)")
+            execute("CREATE TABLE IF NOT EXISTS tablesinfo (_id integer primary key, tablename varchar, insertids text, deleteids text, editids text, wasoffline varchar)")
         }
     }
 
-    private var info: TableInfo
+    var info: TableInfo
 
     init {
         val tableName = c.findAnnotation<DBTable>()?.tableName ?: throw IllegalArgumentException()
@@ -58,26 +62,24 @@ class TableUtils<T : Any>(
             oldList.remove(element)
         }
 
+        val changeList = oldList.filter { info.editIds.contains(it::class.getPropertyWithAnnotation<Primary>(it)) }
+        onlineDB.insertFromClass(changeList, true)
+
+
         info.insertIds.clear()
         info.deleteIds.clear()
+        info.editIds.clear()
 
         saveInfo()
 
-        onlineDB.insertFromClass(oldList, true)
-
-        //if (!info.wasOffline) return oldList
-
-        val syncedList = onlineDB.selectToClass(c, selectQuery).filterNotNull()
-        offlineDB.insertFromClass(syncedList, true)
-
-        return syncedList
+        return onlineDB.selectToClass(c, selectQuery).filterNotNull().also { offlineDB.insertFromClass(it, true) }
     }
 
     fun insert(obj: T) {
         if (onlineDB.isAvailable) {
             onlineDB.insertFromClass(obj)
             offlineDB.insertFromClass(obj, true)
-        }else {
+        } else {
             val id = offlineDB.insertFromClass(obj) ?: -1
 
             info.insertIds.add(id)
@@ -89,7 +91,7 @@ class TableUtils<T : Any>(
         if (onlineDB.isAvailable) {
             onlineDB.insertFromClass(objs)
             offlineDB.insertFromClass(objs, true)
-        }else {
+        } else {
             val ids = offlineDB.insertFromClass(objs).filterNotNull()
 
             info.insertIds.addAll(ids)
@@ -123,5 +125,5 @@ class TableUtils<T : Any>(
         offlineDB.deleteFromClass(objs)
     }
 
-    private fun saveInfo() = offlineDB.insertFromClass(info, info.id != -1)
+    fun saveInfo() = offlineDB.insertFromClass(info, info.id != -1)
 }

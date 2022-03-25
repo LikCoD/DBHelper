@@ -8,6 +8,7 @@ data class TableInfo(
     val tableName: String,
     val insertIds: MutableList<Int> = mutableListOf(),
     val deleteIds: MutableList<Int> = mutableListOf(),
+    val editIds: MutableList<Int> = mutableListOf(),
     val wasOffline: Boolean = false,
     @Primary val id: Int = -1   
 )

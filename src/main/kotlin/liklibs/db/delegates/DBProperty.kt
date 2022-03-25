@@ -24,6 +24,12 @@ open class DBProperty<V>(var value: V) : ReadWriteProperty<Any?, V> {
 
         val utils = lists[thisRef::class.simpleName]?.utils ?: throw IllegalStateException("No list created")
 
+        val id = thisRef::class.getPropertyWithAnnotation<Primary>(thisRef)
+        if (!utils.info.insertIds.contains(id) && id is Int && !utils.onlineDB.isAvailable){
+            utils.info.editIds.add(id)
+            utils.saveInfo()
+        }
+
         updateDb(thisRef, property, value, SQLiteData, utils.offlineDB)
         if (utils.onlineDB.isAvailable) updateDb(thisRef, property, value, PostgresData, utils.onlineDB)
     }
