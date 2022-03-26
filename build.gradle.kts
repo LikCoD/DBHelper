@@ -58,13 +58,10 @@ publishing {
                 }
             }
             maven {
-                val spaceUsername: String by project
-                val spacePassword: String by project
-
                 url = uri("https://maven.pkg.jetbrains.space/likco/p/dbhelper/maven")
                 credentials {
-                    username = spaceUsername
-                    password = spacePassword
+                    username = project.findProperty("spaceUsername") as String? ?: System.getenv("USERNAME")
+                    password = project.findProperty("spacePassword") as String? ?: System.getenv("TOKEN")
                 }
             }
         }
