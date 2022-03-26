@@ -11,6 +11,7 @@ import kotlin.reflect.full.findAnnotation
 class TableUtils<T : Any>(
     private val c: KClass<T>,
     var selectQuery: String?,
+    var conflictResolver: (List<ConflictResolver<T>>) -> List<T> = { r -> r.map { it.local } },
     private val dbInfo: DBInfo = c.java.declaringClass.kotlin.findAnnotation() ?: throw IllegalArgumentException(),
     onlineDBData: DBData = PostgresData,
     offlineDBData: DBData = SQLiteData,
@@ -62,9 +63,17 @@ class TableUtils<T : Any>(
             oldList.remove(element)
         }
 
-        val changeList = oldList.filter { info.editIds.contains(it::class.getPropertyWithAnnotation<Primary>(it)) }
-        onlineDB.insertFromClass(changeList, true)
+        val resolveList = oldList.mapNotNull {
+            val id = it::class.getPropertyWithAnnotation<Primary>(it)
+            if (id !is Int || !info.editIds.map { i -> i }.contains(id)) return@mapNotNull null
 
+            val server =
+                onlineDB.selectToClass(c, "SELECT * FROM $tableName WHERE _id = $id").firstOrNull() ?: return@mapNotNull null
+
+            ConflictResolver(it, server)
+        }
+
+        onlineDB.insertFromClass(conflictResolver(resolveList), true)
 
         info.insertIds.clear()
         info.deleteIds.clear()

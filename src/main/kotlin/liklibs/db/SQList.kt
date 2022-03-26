@@ -1,19 +1,21 @@
 package liklibs.db
 
+import liklibs.db.utlis.ConflictResolver
 import liklibs.db.utlis.TableUtils
 import kotlin.reflect.KClass
 
 class SQList<E : Any>(
     private val kClass: KClass<E>,
     selectQuery: String? = null,
-    private val list: MutableList<E> = mutableListOf()
+    conflictResolver: (List<ConflictResolver<E>>) -> List<E> = { r -> r.map { it.local } },
+    private val list: MutableList<E> = mutableListOf(),
 ) : MutableList<E> by list {
     val utils: TableUtils<E>
 
     init {
         lists[kClass.simpleName.toString()] = this
 
-        utils = TableUtils(kClass, selectQuery)
+        utils = TableUtils(kClass, selectQuery, conflictResolver)
 
         list.addAll(utils.sync())
     }
@@ -62,10 +64,13 @@ class SQList<E : Any>(
         throw IllegalArgumentException("you cannot change full property")
     }
 
-    fun update(){
+    fun update() {
         list.clear()
         list.addAll(utils.offlineDB.selectToClass(kClass, utils.selectQuery).filterNotNull().toMutableList())
     }
 }
 
-inline fun <reified T : Any> sqList(selectQuery: String? = null) = SQList(T::class, selectQuery)
+inline fun <reified T : Any> sqList(
+    selectQuery: String? = null,
+    noinline conflictResolver: (List<ConflictResolver<T>>) -> List<T> = { r -> r.map { it.local } },
+) = SQList(T::class, selectQuery, conflictResolver)
