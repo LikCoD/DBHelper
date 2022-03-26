@@ -53,6 +53,14 @@ publishing {
     configure<PublishingExtension> {
         repositories {
             maven {
+                name = "GitHubPackages"
+                url = uri("https://maven.pkg.github.com/likcod/dbhelper")
+                credentials {
+                    username = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
+                    password = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
+                }
+            }
+            maven {
                 url = uri("https://maven.pkg.jetbrains.space/likco/p/dbhelper/maven")
                 credentials {
                     username = spaceUsername
