@@ -1,5 +1,8 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
+val spaceUsername: String by project
+val spacePassword: String by project
+
 plugins {
     kotlin("jvm") version "1.6.10"
     kotlin("plugin.serialization") version "1.6.10"
@@ -50,11 +53,10 @@ publishing {
     configure<PublishingExtension> {
         repositories {
             maven {
-                name = "GitHubPackages"
-                url = uri("https://maven.pkg.github.com/likcod/dbhelper")
+                url = uri("https://maven.pkg.jetbrains.space/likco/p/dbhelper/maven")
                 credentials {
-                    username = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
-                    password = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
+                    username = spaceUsername
+                    password = spacePassword
                 }
             }
         }
@@ -62,10 +64,11 @@ publishing {
             register<MavenPublication>("gpr") {
                 groupId = "liklibs.db"
                 artifactId = "db-helper"
-                version = "0.8"
+                version = "0.9"
 
                 from(components["java"])
             }
         }
     }
 }
+
