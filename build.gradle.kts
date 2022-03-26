@@ -1,8 +1,5 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
-val spaceUsername: String by project
-val spacePassword: String by project
-
 plugins {
     kotlin("jvm") version "1.6.10"
     kotlin("plugin.serialization") version "1.6.10"
@@ -61,6 +58,9 @@ publishing {
                 }
             }
             maven {
+                val spaceUsername: String by project
+                val spacePassword: String by project
+
                 url = uri("https://maven.pkg.jetbrains.space/likco/p/dbhelper/maven")
                 credentials {
                     username = spaceUsername
