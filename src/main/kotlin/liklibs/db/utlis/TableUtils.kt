@@ -11,7 +11,7 @@ import kotlin.reflect.full.findAnnotation
 class TableUtils<T : Any>(
     private val c: KClass<T>,
     var selectQuery: String?,
-    var conflictResolver: (List<ConflictResolver<T>>) -> List<T> = { r -> r.map { it.local } },
+    var resolver: (ConflictResolver<T>, List<ConflictResolver.Conflict<T>>) -> Unit = { r, l -> r.resolve(l.map { it.local }) },
     private val dbInfo: DBInfo = c.java.declaringClass.kotlin.findAnnotation() ?: throw IllegalArgumentException(),
     onlineDBData: DBData = PostgresData,
     offlineDBData: DBData = SQLiteData,
@@ -37,8 +37,8 @@ class TableUtils<T : Any>(
             ?.parseToClass(offlineDBData) ?: TableInfo(tableName)
     }
 
-    fun sync(): List<T> {
-        val tableName = c.findAnnotation<DBTable>()?.tableName ?: return emptyList()
+    fun sync(list: MutableList<T>) {
+        val tableName = c.findAnnotation<DBTable>()?.tableName ?: return
 
         val createQuery = TableQuery.createSQLite(c)
         offlineDB.execute("CREATE TABLE IF NOT EXISTS $tableName ($createQuery);")
@@ -46,7 +46,10 @@ class TableUtils<T : Any>(
         println("[INFO] Create $tableName query - $createQuery")
 
         val oldList = offlineDB.selectToClass(c, selectQuery).filterNotNull().toMutableList()
-        if (!onlineDB.isAvailable) return oldList
+        if (!onlineDB.isAvailable) {
+            list.addAll(oldList)
+            return
+        }
 
         if (info.deleteIds.isNotEmpty())
             onlineDB.execute("DELETE FROM $tableName WHERE _id IN (${info.deleteIds.joinToString()})")
@@ -68,12 +71,11 @@ class TableUtils<T : Any>(
             if (id !is Int || !info.editIds.map { i -> i }.contains(id)) return@mapNotNull null
 
             val server =
-                onlineDB.selectToClass(c, "SELECT * FROM $tableName WHERE _id = $id").firstOrNull() ?: return@mapNotNull null
+                onlineDB.selectToClass(c, "SELECT * FROM $tableName WHERE _id = $id").firstOrNull()
+                    ?: return@mapNotNull null
 
-            ConflictResolver(it, server)
+            ConflictResolver.Conflict(it, server)
         }
-
-        onlineDB.insertFromClass(conflictResolver(resolveList), true)
 
         info.insertIds.clear()
         info.deleteIds.clear()
@@ -81,7 +83,14 @@ class TableUtils<T : Any>(
 
         saveInfo()
 
-        return onlineDB.selectToClass(c, selectQuery).filterNotNull().also { offlineDB.insertFromClass(it, true) }
+        ConflictResolver(resolver) { _, l ->
+            onlineDB.insertFromClass(l, true)
+
+            val elements = onlineDB.selectToClass(c, selectQuery).filterNotNull()
+            offlineDB.insertFromClass(elements, true)
+
+            list.addAll(elements)
+        }.conflict(resolveList)
     }
 
     fun insert(obj: T) {

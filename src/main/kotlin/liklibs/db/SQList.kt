@@ -7,7 +7,7 @@ import kotlin.reflect.KClass
 class SQList<E : Any>(
     private val kClass: KClass<E>,
     selectQuery: String? = null,
-    conflictResolver: (List<ConflictResolver<E>>) -> List<E> = { r -> r.map { it.local } },
+    conflictResolver: (ConflictResolver<E>, List<ConflictResolver.Conflict<E>>) -> Unit = { r, l -> r.resolve(l.map { it.local }) },
     private val list: MutableList<E> = mutableListOf(),
 ) : MutableList<E> by list {
     val utils: TableUtils<E>
@@ -17,7 +17,7 @@ class SQList<E : Any>(
 
         utils = TableUtils(kClass, selectQuery, conflictResolver)
 
-        list.addAll(utils.sync())
+        utils.sync(list)
     }
 
     override fun add(element: E): Boolean =
@@ -72,5 +72,5 @@ class SQList<E : Any>(
 
 inline fun <reified T : Any> sqList(
     selectQuery: String? = null,
-    noinline conflictResolver: (List<ConflictResolver<T>>) -> List<T> = { r -> r.map { it.local } },
+    noinline conflictResolver: (ConflictResolver<T>, List<ConflictResolver.Conflict<T>>) -> Unit = { r, l -> r.resolve(l.map { it.local }) },
 ) = SQList(T::class, selectQuery, conflictResolver)
