@@ -77,13 +77,13 @@ class TableUtils<T : Any>(
             ConflictResolver.Conflict(it, server)
         }
 
-        info.insertIds.clear()
-        info.deleteIds.clear()
-        info.editIds.clear()
-
-        saveInfo()
-
         ConflictResolver(resolver) { _, l ->
+            info.insertIds.clear()
+            info.deleteIds.clear()
+            info.editIds.clear()
+
+            saveInfo()
+
             onlineDB.insertFromClass(l, true)
 
             val elements = onlineDB.selectToClass(c, selectQuery).filterNotNull()
