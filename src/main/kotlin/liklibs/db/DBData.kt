@@ -68,6 +68,7 @@ object SQLiteData : DBData {
     private const val falseString = "__false__"
 
     override fun <T> parseValue(value: T): String = when (value) {
+        null -> "null"
         is Boolean -> "'${if (value) trueString else falseString}'"
         is String -> "'${value.replace(detectInjectionRegex, "")}'"
         is Iterable<*> -> toJson(value)
