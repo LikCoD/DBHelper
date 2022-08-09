@@ -8,14 +8,16 @@ class SQList<E : Any>(
     private val kClass: KClass<E>,
     selectQuery: String? = null,
     conflictResolver: (ConflictResolver<E>, List<ConflictResolver.Conflict<E>>) -> Unit = { r, l -> r.resolve(l.map { it.local }) },
-    private val list: MutableList<E> = mutableListOf(),
+    onlineDBData: DBData = PostgresData,
+    offlineDBData: DBData = SQLiteData,
+    private val list: MutableList<E> = mutableListOf()
 ) : MutableList<E> by list {
     val utils: TableUtils<E>
 
     init {
         lists[kClass.simpleName.toString()] = this
 
-        utils = TableUtils(kClass, selectQuery, conflictResolver)
+        utils = TableUtils(kClass, selectQuery, conflictResolver, onlineDBData, offlineDBData)
 
         utils.sync(list)
     }
@@ -73,4 +75,6 @@ class SQList<E : Any>(
 inline fun <reified T : Any> sqList(
     selectQuery: String? = null,
     noinline conflictResolver: (ConflictResolver<T>, List<ConflictResolver.Conflict<T>>) -> Unit = { r, l -> r.resolve(l.map { it.local }) },
-) = SQList(T::class, selectQuery, conflictResolver)
+    onlineDBData: DBData = PostgresData,
+    offlineDBData: DBData = SQLiteData
+) = SQList(T::class, selectQuery, conflictResolver, onlineDBData, offlineDBData)

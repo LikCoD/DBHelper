@@ -12,9 +12,9 @@ class TableUtils<T : Any>(
     private val c: KClass<T>,
     var selectQuery: String?,
     var resolver: (ConflictResolver<T>, List<ConflictResolver.Conflict<T>>) -> Unit = { r, l -> r.resolve(l.map { it.local }) },
-    private val dbInfo: DBInfo = c.java.declaringClass.kotlin.findAnnotation() ?: throw IllegalArgumentException(),
-    onlineDBData: DBData = PostgresData,
-    offlineDBData: DBData = SQLiteData,
+    onlineDBData: DBData,
+    offlineDBData: DBData,
+    private val dbInfo: DBInfo = c.java.declaringClass.kotlin.findAnnotation() ?: throw IllegalArgumentException()
 ) {
     val onlineDB = dbs.getOrPut("${onlineDBData.dbName}_${dbInfo.dbName}") {
         DB(dbInfo.dbName,
